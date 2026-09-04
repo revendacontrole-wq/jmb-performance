@@ -357,7 +357,14 @@ const app = {
         body: formData
       });
 
-      const data = await res.json();
+      let data = {};
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        if (!res.ok) throw new Error(`Erro no servidor (${res.status}): ${text.substring(0, 120)}`);
+      }
       if (!res.ok) throw new Error(data.detail || 'Erro ao publicar treinamento.');
 
       msgEl.style.background = '#ECFDF5';
