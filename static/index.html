@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JMB PERFORMANCE - Revenda JMB Distribuidor Oficial Ambev</title>
+  <link rel="icon" type="image/jpeg" href="/static/img/logo_jmb.jpg?v=2">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0047BA">
+  <link rel="stylesheet" href="/static/css/style.css?v=2">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- APP HEADER WITH STRICT COMPACT INLINE SIZE RULES -->
+  <header class="app-header" id="appHeader" style="display: none; height: 56px; padding: 0 1.25rem; align-items: center; justify-content: space-between; background-color: #0A1128; overflow: hidden;">
+    <div class="brand-logo" style="display: flex; align-items: center; gap: 0.6rem; height: 40px; flex-shrink: 0;">
+      <img src="/static/img/logo_jmb.jpg?v=2" alt="Revenda JMB Ambev" style="height: 32px; max-height: 32px; width: auto; max-width: 90px; object-fit: contain; border-radius: 4px; flex-shrink: 0; display: block;">
+      <span style="font-weight: 800; font-size: 0.95rem; color: #FFFFFF; white-space: nowrap;">JMB PERFORMANCE</span>
+      <span class="brand-badge" id="roleBadge">COLABORADOR</span>
+    </div>
+    <div class="user-menu" style="display: flex; align-items: center; gap: 0.85rem; flex-shrink: 0;">
+      <div class="user-info-tag" style="text-align: right; line-height: 1.2;">
+        <div style="font-weight: 700; color: #fff; font-size: 0.82rem;" id="headerUserName">---</div>
+        <div style="font-size: 0.72rem; color: #94A3B8;" id="headerUserCpf">***.***.***-**</div>
+      </div>
+      <button class="btn-logout" id="btnLogout" onclick="app.logout()">SAIR</button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="container">
+
+    <!-- 1. CLEAN LOGIN SCREEN WITH STRICT LOGO SIZE -->
+    <section id="viewLogin" class="login-wrapper">
+      <div class="login-card">
+        <div class="login-header">
+          <img src="/static/img/logo_jmb.jpg?v=2" alt="Revenda JMB - Distribuidor Oficial Ambev" style="height: 70px; max-height: 70px; width: auto; max-width: 120px; object-fit: contain; border-radius: 8px; margin-bottom: 0.75rem; display: inline-block;">
+          <h1>JMB PERFORMANCE</h1>
+          <p>Gestão de Performance e Remuneração Variável</p>
+        </div>
+
+        <form id="formLogin" onsubmit="app.handleLogin(event)">
+          <div class="form-group">
+            <label for="inputCpf">CPF do Colaborador ou Matrícula</label>
+            <input type="text" id="inputCpf" class="form-input" placeholder="Digite seu CPF ou Matrícula" required autocomplete="username">
+          </div>
+
+          <div class="form-group">
+            <label for="inputPassword">Senha</label>
+            <div class="input-password-wrapper">
+              <input type="password" id="inputPassword" class="form-input" placeholder="Digite sua senha (padrão: jmb123)" required autocomplete="current-password">
+              <button type="button" class="toggle-password" onclick="app.togglePassword()">👁️ Mostrar</button>
+            </div>
+          </div>
+
+          <div id="loginError" style="color: #EF4444; font-size: 0.85rem; margin-bottom: 1rem; display: none;"></div>
+
+          <button type="submit" class="btn-primary">ENTRAR</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- 2. COLLABORATOR SCREEN (MOTORISTA / AJUDANTE) -->
+    <section id="viewCollaborator" style="display: none;">
+      <div class="dash-top">
+        <div class="greeting">
+          <h2 id="collabGreeting">Olá, Colaborador</h2>
+          <span style="color: var(--text-muted); font-size: 0.9rem;" id="collabSubtext">Competência em apuração</span>
+        </div>
+        <div class="comp-selector">
+          <label style="font-size: 0.85rem; font-weight: 600;">Competência:</label>
+          <select id="selectCompetenciaCollab" onchange="app.loadCollaboratorDashboard(this.value)">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+      </div>
+
+      <!-- COLLABORATOR NAVIGATION TABS -->
+      <div class="admin-tabs" style="margin-bottom: 1.5rem;">
+        <button class="tab-btn active" id="btnTabCollabDesempenho" onclick="app.switchCollabTab('desempenho')">📊 MEU DESEMPENHO</button>
+        <button class="tab-btn" id="btnTabCollabFeedback" onclick="app.switchCollabTab('feedback')">💬 FEEDBACK DIÁRIO</button>
+        <button class="tab-btn" id="btnTabCollabTreinamentos" onclick="app.switchCollabTab('treinamentos')">📚 TREINAMENTOS / PDFS</button>
+        <button class="tab-btn" id="btnTabCollabCampanhas" onclick="app.switchCollabTab('campanhas')">🏆 CAMPANHAS</button>
+      </div>
+
+      <!-- ABA 1: MEU DESEMPENHO -->
+      <div id="tabCollabDesempenho">
+        <!-- Top Summary Metrics Grid -->
+        <div class="metrics-grid">
+          <div class="card">
+            <div class="card-label">Performance Geral</div>
+            <div class="card-value-big" id="valPerfGeral">0%</div>
+            <div class="card-subtext" id="subPerfGeral">Atingimento Global</div>
+          </div>
+
+          <div class="card rv-card">
+            <div class="card-label">Minha RV (Prevista)</div>
+            <div class="card-value-big" style="color: var(--primary);" id="valRvPrevista">R$ 0,00</div>
+            <div class="card-subtext">RV Máxima: <strong id="valRvMaxima">R$ 1.000,00</strong></div>
+          </div>
+
+          <div class="card">
+            <div class="card-label">Ranking na Equipe</div>
+            <div class="card-value-big" id="valRanking">--º</div>
+            <div class="card-subtext" id="subRanking">de -- colaboradores</div>
+          </div>
+        </div>
+
+        <!-- Indicators Section -->
+        <div class="section-title">
+          <span>6 Indicadores Operacionais</span>
+          <span class="badge-status status-verde" id="badgeGeralMeta">DENTRO DA META</span>
+        </div>
+
+        <div class="indicators-grid" id="containerIndicators">
+          <!-- Rendered via JS -->
+        </div>
+
+        <!-- Banner "Entender Meu Resultado" -->
+        <div class="banner-entender">
+          <div class="banner-text">
+            <h3>Como sua Remuneração Variável foi calculada?</h3>
+            <p>Veja os detalhes de metas atingidas, desvios e o potencial restante.</p>
+          </div>
+          <button class="btn-entender" onclick="app.openEntenderModal()">ENTENDER MEU RESULTADO</button>
+        </div>
+
+        <!-- Daily Breakdown Section (Resultados Dia a Dia com Indicadores) -->
+        <div class="card" style="margin-bottom: 2rem;">
+          <div class="section-title">
+            <span>EVOLUÇÃO DIA A DIA (RESULTADOS E INDICADORES DIÁRIOS)</span>
+            <span class="badge-status status-verde" id="badgeDiasTrabalhados">-- DIAS COM ROTA</span>
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+            Acompanhe o seu desempenho diário, volume de caixas, ajudantes, janela de jornada e acúmulo da Remuneração Variável dia a dia.
+          </p>
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Dia</th>
+                  <th>Data</th>
+                  <th>Mapa / Rota</th>
+                  <th>Caixas Entregues</th>
+                  <th>Indicadores do Dia</th>
+                  <th>RV do Dia</th>
+                  <th>RV Acumulada</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyDailyBreakdown">
+                <!-- Rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Monthly History Section -->
+        <div class="card" style="margin-bottom: 2rem;">
+          <div class="section-title">MEU HISTÓRICO DE PERFORMANCE</div>
+          <div style="height: 250px; position: relative;">
+            <canvas id="chartHistory"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ABA 2: FEEDBACK DIÁRIO -->
+      <div id="tabCollabFeedback" style="display: none;">
+        <div class="card" style="margin-bottom: 2rem; border-left: 5px solid #10B981;">
+          <div class="section-title">
+            <span>💬 FEEDBACK E OBSERVAÇÕES DIÁRIAS</span>
+            <span class="badge-status status-verde">CANAL DIRETO DA EQUIPE</span>
+          </div>
+
+          <div style="background: #ECFDF5; border: 1px solid #A7F3D0; padding: 1rem; border-radius: 10px; margin-bottom: 1.25rem;">
+            <p style="color: #065F46; font-size: 0.95rem; font-weight: 600; margin: 0; line-height: 1.4;">
+              "Nos conte dos problemas durante o seu dia que impactaram no seu desempenho, bem como sugestões de melhorias para otimizar sua rotina."
+            </p>
+          </div>
+
+          <form id="formFeedback" onsubmit="app.handleFeedbackSubmit(event)">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:0.3rem;">Data do Ocorrido:</label>
+                <input type="date" id="inputFeedbackDate" class="form-input" required>
+              </div>
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:0.3rem;">Categoria do Ocorrido:</label>
+                <select id="selectFeedbackCategory" class="form-input" required>
+                  <option value="Problema Operacional">🚨 Problema Operacional (Atraso na Carga, Quebra, Rota, Recusa)</option>
+                  <option value="Sugestão de Melhoria">💡 Sugestão de Melhoria para a Rotina</option>
+                  <option value="Outros">📝 Outros Comentários / Observações</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+              <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:0.3rem;">Descreva o que aconteceu ou sua sugestão:</label>
+              <textarea id="textareaFeedbackComment" class="form-input" rows="4" placeholder="Descreva aqui com detalhes o problema que atrapalhou sua meta ou sua ideia de melhoria..." required style="resize: vertical;"></textarea>
+            </div>
+
+            <div id="feedbackMsg" style="display: none; padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 1rem;"></div>
+
+            <button type="submit" class="btn-primary" id="btnSubmitFeedback" style="max-width: 250px;">ENVIAR FEEDBACK</button>
+          </form>
+
+          <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #E2E8F0;">
+
+          <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 0.75rem; color: #0F172A;">Meus Feedbacks Enviados</div>
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Data Envio</th>
+                  <th>Data Ocorrido</th>
+                  <th>Categoria</th>
+                  <th>Comentário / Relato</th>
+                  <th>Status</th>
+                  <th>Resposta da Gestão</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyMyFeedbacks">
+                <!-- Rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ABA 3: TREINAMENTOS E PDFS -->
+      <div id="tabCollabTreinamentos" style="display: none;">
+        <div class="card" style="margin-bottom: 2rem; border-left: 5px solid #3B82F6;">
+          <div class="section-title">
+            <span>📚 MANUAIS, TREINAMENTOS E MATERIAIS DE APOIO</span>
+            <span class="badge-status status-verde">BIBLIOTECA OPERACIONAL</span>
+          </div>
+
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+            Acesse os manuais de procedimentos, vídeos, PDFs operacionais e rotinas da empresa sempre que precisar.
+          </p>
+
+          <!-- Category filter -->
+          <div style="margin-bottom: 1.25rem;">
+            <select id="selectTrainingCategoryCollab" class="form-input" style="max-width: 300px;" onchange="app.loadCollaboratorTrainings(this.value)">
+              <option value="Todas">Todas as Categorias</option>
+              <option value="Procedimentos Operacionais">Procedimentos Operacionais</option>
+              <option value="Segurança">Segurança do Trabalho e Trânsito</option>
+              <option value="Atendimento ao Cliente">Atendimento e Devolução</option>
+              <option value="Outros">Outros Guias</option>
+            </select>
+          </div>
+
+          <!-- Cards Grid -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem;" id="containerTrainingsCollab">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ABA 4: CAMPANHAS -->
+      <div id="tabCollabCampanhas" style="display: none;">
+        <div class="card">
+          <div class="section-title">CAMPANHAS E INCENTIVOS ATIVOS</div>
+          <div id="containerCampaigns">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- 3. SUPERVISOR SCREEN -->
+    <section id="viewSupervisor" style="display: none;">
+      <div class="dash-top">
+        <div class="greeting">
+          <h2>Painel do Supervisor</h2>
+          <span style="color: var(--text-muted); font-size: 0.9rem;">Visão consolidada da equipe</span>
+        </div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="card">
+          <div class="card-label">Total da Equipe</div>
+          <div class="card-value-big" id="supTotal">0</div>
+        </div>
+        <div class="card" style="border-left: 5px solid #10B981;">
+          <div class="card-label">Dentro da Meta</div>
+          <div class="card-value-big" style="color: #10B981;" id="supDentro">0</div>
+        </div>
+        <div class="card" style="border-left: 5px solid #F59E0B;">
+          <div class="card-label">Em Atenção</div>
+          <div class="card-value-big" style="color: #F59E0B;" id="supAtencao">0</div>
+        </div>
+        <div class="card" style="border-left: 5px solid #EF4444;">
+          <div class="card-label">Fora da Meta</div>
+          <div class="card-value-big" style="color: #EF4444;" id="supFora">0</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-title">Membros da Equipe</div>
+        <div class="table-responsive">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Ranking</th>
+                <th>Colaborador</th>
+                <th>Cargo</th>
+                <th>CPF</th>
+                <th>Performance</th>
+                <th>RV Prevista</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="tbodySupervisorTeam">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. ADMIN PANEL -->
+    <section id="viewAdmin" style="display: none;">
+      <div class="dash-top">
+        <div class="greeting">
+          <h2>Painel Administrativo</h2>
+          <span style="color: var(--text-muted); font-size: 0.9rem;">Gestão de resultados e importações</span>
+        </div>
+      </div>
+
+      <!-- Admin Navigation Tabs -->
+      <div class="admin-tabs">
+        <button class="tab-btn active" onclick="app.switchAdminTab('atualizar')">ATUALIZAR RESULTADOS</button>
+        <button class="tab-btn" onclick="app.switchAdminTab('feedbacks')">💬 FEEDBACKS DA EQUIPE</button>
+        <button class="tab-btn" onclick="app.switchAdminTab('treinamentos')">📚 TREINAMENTOS / PDFS</button>
+        <button class="tab-btn" onclick="app.switchAdminTab('historico')">HISTÓRICO DE IMPORTAÇÕES</button>
+        <button class="tab-btn" onclick="app.switchAdminTab('colaboradores')">COLABORADORES</button>
+        <button class="tab-btn" onclick="app.switchAdminTab('campanhas')">CAMPANHAS</button>
+      </div>
+
+      <!-- TAB: ATUALIZAR RESULTADOS -->
+      <div id="tabAdminAtualizar">
+        <div class="card">
+          <div class="section-title">Importação de Planilha Mensal (Excel / CSV)</div>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">
+            Faça upload da planilha oficial de Remuneração Variável. O sistema analisa automaticamente todas as abas e exibe uma prévia antes da confirmação.
+          </p>
+
+          <div style="max-width: 400px; margin-bottom: 1.5rem;">
+            <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:0.4rem;">Selecionar Competência:</label>
+            <select id="adminSelectCompetencia" class="form-input">
+              <option value="Julho/2026">Julho/2026</option>
+              <option value="Agosto/2026" selected>Agosto/2026</option>
+              <option value="Setembro/2026">Setembro/2026</option>
+              <option value="Outubro/2026">Outubro/2026</option>
+              <option value="Novembro/2026">Novembro/2026</option>
+              <option value="Dezembro/2026">Dezembro/2026</option>
+            </select>
+          </div>
+
+          <!-- Upload Dropzone -->
+          <div class="upload-dropzone" id="dropzone" onclick="document.getElementById('fileExcel').click()">
+            <div class="upload-icon">📊</div>
+            <div style="font-weight: 700; font-size: 1.1rem; margin-bottom: 0.3rem;">Arraste ou clique para selecionar a planilha Excel (.xlsx)</div>
+            <div style="color: var(--text-muted); font-size: 0.85rem;">Compatível com a estrutura oficial (Consolidado RV MOT, Consolidado RV AJU, Base Mot, Base Aju, etc.)</div>
+            <input type="file" id="fileExcel" accept=".xlsx, .xls" style="display: none;" onchange="app.handleFileSelect(event)">
+          </div>
+
+          <div id="fileSelectedInfo" style="display: none; background: #ECFDF5; padding: 1rem; border-radius: 10px; border: 1px solid #A7F3D0; margin-bottom: 1.5rem;">
+            <div style="font-weight: 700; color: #065F46;" id="fileNameText">arquivo.xlsx</div>
+            <button class="btn-primary" style="margin-top: 0.75rem;" onclick="app.analyzeExcelFile()">ANALISAR PLANILHA</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: FEEDBACKS DA EQUIPE -->
+      <div id="tabAdminFeedbacks" style="display: none;">
+        <div class="card">
+          <div class="section-title">Feedbacks, Ocorrências e Sugestões Enviados pela Equipe</div>
+
+          <!-- Filters -->
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;">
+            <div>
+              <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:0.3rem;">Status:</label>
+              <select id="adminFilterFeedbackStatus" class="form-input" onchange="app.loadAdminFeedbacks()">
+                <option value="Todos">Todos os Status</option>
+                <option value="PENDENTE">⏳ PENDENTE</option>
+                <option value="EM ANÁLISE">🔍 EM ANÁLISE</option>
+                <option value="RESOLVIDO">✅ RESOLVIDO</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:0.85rem; font-weight:700; display:block; margin-bottom:0.3rem;">Categoria:</label>
+              <select id="adminFilterFeedbackCategory" class="form-input" onchange="app.loadAdminFeedbacks()">
+                <option value="Todas">Todas as Categorias</option>
+                <option value="Problema Operacional">🚨 Problema Operacional</option>
+                <option value="Sugestão de Melhoria">💡 Sugestão de Melhoria</option>
+                <option value="Outros">📝 Outros</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Data Envio</th>
+                  <th>Colaborador</th>
+                  <th>Cargo</th>
+                  <th>Data Ocorrido</th>
+                  <th>Categoria</th>
+                  <th>Comentário / Relato</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyAdminFeedbacks">
+                <!-- Rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: TREINAMENTOS / PDFS DA EQUIPE -->
+      <div id="tabAdminTreinamentos" style="display: none;">
+        <div class="card" style="margin-bottom: 2rem;">
+          <div class="section-title">Publicar Novo Treinamento ou Material (PDF / Documento)</div>
+
+          <form id="formUploadTraining" onsubmit="app.handleTrainingUpload(event)">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:0.3rem;">Título do Treinamento / Material:</label>
+                <input type="text" id="inputTrainingTitle" class="form-input" placeholder="Ex: Manual de Procedimentos e Devoluções 2026" required>
+              </div>
+              <div>
+                <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:0.3rem;">Categoria:</label>
+                <select id="selectTrainingCategory" class="form-input" required>
+                  <option value="Procedimentos Operacionais">Procedimentos Operacionais</option>
+                  <option value="Segurança">Segurança do Trabalho e Trânsito</option>
+                  <option value="Atendimento ao Cliente">Atendimento e Devolução</option>
+                  <option value="Outros">Outros Guias</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+              <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:0.3rem;">Descrição / Resumo das Instruções:</label>
+              <textarea id="textareaTrainingDesc" class="form-input" rows="2" placeholder="Resumo breve do que o colaborador aprenderá neste material..."></textarea>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+              <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:0.3rem;">Anexar Arquivo (PDF, PPTX, DOCX, MP4, etc.):</label>
+              <input type="file" id="fileTraining" class="form-input" accept=".pdf, .pptx, .docx, .doc, .xlsx, .mp4, .png, .jpg" required>
+            </div>
+
+            <div id="trainingUploadMsg" style="display: none; padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 1rem;"></div>
+
+            <button type="submit" class="btn-primary" id="btnSubmitTraining" style="max-width: 280px;">PUBLICAR MATERIAL</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Materiais Publicados para a Equipe</div>
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Título</th>
+                  <th>Categoria</th>
+                  <th>Arquivo</th>
+                  <th>Tamanho</th>
+                  <th>Data Publicação</th>
+                  <th>Publicado Por</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyAdminTrainings">
+                <!-- Rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: HISTÓRICO DE IMPORTAÇÕES -->
+      <div id="tabAdminHistorico" style="display: none;">
+        <div class="card">
+          <div class="section-title">Histórico de Importações de Planilhas</div>
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Data/Hora</th>
+                  <th>Arquivo</th>
+                  <th>Competência</th>
+                  <th>Total Lido</th>
+                  <th>Motoristas</th>
+                  <th>Ajudantes</th>
+                  <th>Novos</th>
+                  <th>Atualizados</th>
+                  <th>Importador</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyImportHistory">
+                <!-- Rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: COLABORADORES -->
+      <div id="tabAdminColaboradores" style="display: none;">
+        <div class="card">
+          <div class="section-title">Cadastro Geral de Colaboradores</div>
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Matrícula</th>
+                  <th>Nome</th>
+                  <th>Cargo</th>
+                  <th>CPF (Mascarado)</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyAdminUsers">
+                <!-- Rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: CAMPANHAS -->
+      <div id="tabAdminCampanhas" style="display: none;">
+        <div class="card">
+          <div class="section-title">Gestão de Campanhas e Incentivos</div>
+          <div id="adminCampaignsList">
+            <!-- Rendered via JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL 1: "ENTENDER MEU RESULTADO" -->
+  <div class="modal-overlay" id="modalEntender">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Entender Meu Resultado</h3>
+        <button class="btn-close-modal" onclick="app.closeEntenderModal()">&times;</button>
+      </div>
+      <div class="modal-body-content" id="modalEntenderContent">
+        <!-- Rendered via JS -->
+      </div>
+      <button class="btn-primary" style="margin-top: 1.5rem;" onclick="app.closeEntenderModal()">FECHAR</button>
+    </div>
+  </div>
+
+  <!-- MODAL 2: PRÉVIA ANTES DA IMPORTAÇÃO -->
+  <div class="modal-overlay" id="modalPreview">
+    <div class="modal-card" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3>Prévia da Importação</h3>
+        <button class="btn-close-modal" onclick="app.closePreviewModal()">&times;</button>
+      </div>
+
+      <div class="preview-summary-grid">
+        <div class="preview-stat-card">
+          <span style="color: var(--primary);" id="prevComp">---</span>
+          <label>Competência</label>
+        </div>
+        <div class="preview-stat-card">
+          <span id="prevMotCount">0</span>
+          <label>Motoristas</label>
+        </div>
+        <div class="preview-stat-card">
+          <span id="prevAjuCount">0</span>
+          <label>Ajudantes</label>
+        </div>
+        <div class="preview-stat-card">
+          <span style="color: #10B981;" id="prevValidCount">0</span>
+          <label>Válidos</label>
+        </div>
+        <div class="preview-stat-card">
+          <span style="color: #EF4444;" id="prevErrCount">0</span>
+          <label>Erros</label>
+        </div>
+      </div>
+
+      <!-- Errors Box if any -->
+      <div id="prevErrorsBox" style="display: none; background: #FEF2F2; border: 1px solid #FCA5A5; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem;">
+        <div style="font-weight: 700; color: #991B1B; margin-bottom: 0.5rem;">Avisos / Problemas Encontrados:</div>
+        <ul id="listPrevErrors" style="font-size: 0.85rem; color: #7F1D1D; padding-left: 1.25rem;"></ul>
+      </div>
+
+      <div class="section-title" style="font-size: 1rem;">Amostra de Registros Identificados</div>
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Matrícula</th>
+              <th>Nome</th>
+              <th>Cargo</th>
+              <th>Performance</th>
+              <th>RV Prevista</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyPreviewSample">
+            <!-- Rendered via JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+        <button class="btn-logout" style="flex: 1; padding: 0.85rem;" onclick="app.closePreviewModal()">CANCELAR</button>
+        <button class="btn-primary" style="flex: 2;" id="btnConfirmImport" onclick="app.confirmImportAction()">CONFIRMAR ATUALIZAÇÃO</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: ADMIN FEEDBACK ACTION (Mudar Status / Responder) -->
+  <div class="modal-overlay" id="modalFeedbackAction">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Atualizar Feedback do Colaborador</h3>
+        <button class="btn-close-modal" onclick="app.closeFeedbackActionModal()">&times;</button>
+      </div>
+
+      <input type="hidden" id="modalFeedbackId">
+
+      <div style="background: #F8FAFC; border: 1px solid #E2E8F0; padding: 1rem; border-radius: 10px; margin-bottom: 1rem;">
+        <div style="font-size: 0.85rem; color: var(--text-muted);" id="modalFbCollabName">Colaborador: ---</div>
+        <div style="font-weight: 700; font-size: 0.95rem; margin-top: 0.3rem;" id="modalFbComment">"---"</div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:0.3rem;">Status do Atendimento:</label>
+        <select id="modalSelectFeedbackStatus" class="form-input">
+          <option value="PENDENTE">⏳ PENDENTE</option>
+          <option value="EM ANÁLISE">🔍 EM ANÁLISE</option>
+          <option value="RESOLVIDO">✅ RESOLVIDO</option>
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.5rem;">
+        <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:0.3rem;">Resposta / Anotação da Gestão:</label>
+        <textarea id="modalTextareaAdminNotes" class="form-input" rows="3" placeholder="Digite aqui uma resposta para o colaborador ou nota interna sobre a solução..."></textarea>
+      </div>
+
+      <div style="display: flex; gap: 1rem;">
+        <button class="btn-logout" style="flex: 1; padding: 0.85rem;" onclick="app.closeFeedbackActionModal()">CANCELAR</button>
+        <button class="btn-primary" style="flex: 2;" onclick="app.submitFeedbackStatusUpdate()">SALVAR ATUALIZAÇÃO</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js?v=2"></script>
+</body>
+</html>
