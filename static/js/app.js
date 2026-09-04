@@ -555,6 +555,16 @@ const app = {
         </div>
       </div>
 
+      <!-- HIGHLIGHTED PAYMENT SCHEDULE BOX -->
+      <div style="background: #F0F7FF; border: 1px solid #BFDBFE; border-left: 4px solid #0047BA; padding: 0.85rem 1rem; border-radius: 10px; margin-bottom: 1.25rem;">
+        <div style="font-weight: 800; color: #0047BA; font-size: 0.88rem; margin-bottom: 0.25rem; display: flex; align-items: center; gap: 0.4rem;">
+          <span>💳 HORÁRIO E DATA DE PAGAMENTO DA RV</span>
+        </div>
+        <p style="font-size: 0.82rem; color: #334155; margin: 0; line-height: 1.4;">
+          O valor apurado da Remuneração Variável será creditado em conta / folha de pagamento até as <strong>17h00</strong> do <strong>5º dia útil</strong> do mês subsequente à apuração.
+        </p>
+      </div>
+
       <h4>✅ Indicadores Dentro da Meta</h4>
       <ul class="list-check">
         ${b.dentro_meta.map(item => `<li><span class="icon-ok">✓</span> ${item}</li>`).join('')}
