@@ -545,13 +545,9 @@ const app = {
     const content = document.getElementById('modalEntenderContent');
     content.innerHTML = `
       <div style="background: #F8FAFC; padding: 1rem; border-radius: 10px; margin-bottom: 1rem; border: 1px solid #E2E8F0;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+        <div style="display: flex; justify-content: space-between;">
           <span>RV Prevista Atual:</span>
           <strong style="color: var(--primary); font-size: 1.1rem;">R$ ${b.rv_prevista.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between;">
-          <span>Potencial Ainda a Receber:</span>
-          <strong style="color: #64748B;">R$ ${b.potencial_restante.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
         </div>
       </div>
 
