@@ -11,9 +11,21 @@ from app.auth import get_current_user, require_role
 
 router = APIRouter(prefix="/api/trainings", tags=["Trainings"])
 
-# Ensure uploads directory exists
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static", "uploads", "trainings")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+import tempfile
+
+def get_upload_dir() -> str:
+    primary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static", "uploads", "trainings")
+    try:
+        os.makedirs(primary, exist_ok=True)
+        test_file = os.path.join(primary, ".test_write")
+        with open(test_file, "w") as f:
+            f.write("test")
+        os.remove(test_file)
+        return primary
+    except Exception:
+        fallback = os.path.join(tempfile.gettempdir(), "uploads", "trainings")
+        os.makedirs(fallback, exist_ok=True)
+        return fallback
 
 def format_file_size(size_in_bytes: int) -> str:
     if size_in_bytes < 1024:
@@ -67,45 +79,53 @@ async def upload_training(
             detail="Por favor, digite um título válido para o treinamento."
         )
 
-    # Save uploaded file to static/uploads/trainings/
-    original_filename = file.filename
-    ext = os.path.splitext(original_filename)[1].lower()
-    
-    unique_filename = f"{uuid.uuid4().hex}{ext}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    try:
+        upload_dir = get_upload_dir()
+        original_filename = file.filename
+        ext = os.path.splitext(original_filename)[1].lower()
+        
+        unique_filename = f"{uuid.uuid4().hex}{ext}"
+        file_path = os.path.join(upload_dir, unique_filename)
 
-    file_bytes = await file.read()
-    file_size = len(file_bytes)
+        file_bytes = await file.read()
+        file_size = len(file_bytes)
 
-    with open(file_path, "wb") as f:
-        f.write(file_bytes)
+        with open(file_path, "wb") as f:
+            f.write(file_bytes)
 
-    file_url = f"/static/uploads/trainings/{unique_filename}"
+        file_url = f"/static/uploads/trainings/{unique_filename}"
 
-    tr = Training(
-        title=title.strip(),
-        description=description.strip() if description else "",
-        category=category.strip(),
-        file_filename=original_filename,
-        file_url=file_url,
-        file_size_bytes=file_size,
-        uploaded_by_name=current_user.name
-    )
-    db.add(tr)
-    db.commit()
-    db.refresh(tr)
+        tr = Training(
+            title=title.strip(),
+            description=description.strip() if description else "",
+            category=category.strip(),
+            file_filename=original_filename,
+            file_url=file_url,
+            file_size_bytes=file_size,
+            uploaded_by_name=current_user.name
+        )
+        db.add(tr)
+        db.commit()
+        db.refresh(tr)
 
-    return TrainingItem(
-        id=tr.id,
-        title=tr.title,
-        description=tr.description or "",
-        category=tr.category,
-        file_filename=tr.file_filename,
-        file_url=tr.file_url,
-        file_size_formatted=format_file_size(tr.file_size_bytes),
-        uploaded_by_name=tr.uploaded_by_name,
-        created_at=tr.created_at.strftime("%d/%m/%Y %H:%M") if tr.created_at else ""
-    )
+        return TrainingItem(
+            id=tr.id,
+            title=tr.title,
+            description=tr.description or "",
+            category=tr.category,
+            file_filename=tr.file_filename,
+            file_url=tr.file_url,
+            file_size_formatted=format_file_size(tr.file_size_bytes),
+            uploaded_by_name=tr.uploaded_by_name,
+            created_at=tr.created_at.strftime("%d/%m/%Y %H:%M") if tr.created_at else ""
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao salvar arquivo de treinamento: {str(e)}"
+        )
 
 @router.delete("/{training_id}")
 def delete_training(
