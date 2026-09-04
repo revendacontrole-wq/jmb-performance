@@ -139,7 +139,8 @@ const app = {
 
       document.getElementById('valPerfGeral').textContent = `${data.performance_pct.toFixed(1)}%`;
       document.getElementById('valRvPrevista').textContent = `R$ ${data.rv_prevista.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-      document.getElementById('valRvMaxima').textContent = `R$ ${data.rv_maxima.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+      const elRvMax = document.getElementById('valRvMaxima');
+      if (elRvMax) elRvMax.textContent = `R$ ${data.rv_maxima.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
       document.getElementById('valRanking').textContent = `${data.ranking_pos}º`;
       document.getElementById('subRanking').textContent = `de ${data.ranking_total} colaboradores`;
 
