@@ -32,6 +32,18 @@ app.include_router(campaigns.router)
 app.include_router(feedback.router)
 app.include_router(trainings.router)
 
+# Dynamic Route for Uploaded Training Files (supports Vercel /tmp)
+@app.get("/static/uploads/trainings/{filename}")
+def serve_training_upload_file(filename: str):
+    import tempfile
+    tmp_path = os.path.join(tempfile.gettempdir(), "uploads", "trainings", filename)
+    if os.path.exists(tmp_path):
+        return FileResponse(tmp_path)
+    static_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "uploads", "trainings", filename)
+    if os.path.exists(static_path):
+        return FileResponse(static_path)
+    return FileResponse(os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "index.html"))
+
 # Mount Static Files
 static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
