@@ -1,0 +1,27 @@
+# Secrets & Environment Variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Python Virtual Environments & Cache
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# SQLite Local DB
+*.sqlite
+*.db
+
+# Node / Vercel Build Outputs
+node_modules/
+.vercel/
+dist/
+build/
+
+# Logs & OS Files
+*.log
+.DS_Store
+Thumbs.db
