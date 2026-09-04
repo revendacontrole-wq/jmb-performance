@@ -122,6 +122,7 @@ class Training(Base):
     file_filename = Column(String, nullable=False)
     file_url = Column(String, nullable=False)
     file_size_bytes = Column(Integer, default=0)
+    file_data_base64 = Column(Text, nullable=True)
     uploaded_by_name = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
