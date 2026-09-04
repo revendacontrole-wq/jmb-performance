@@ -11,21 +11,9 @@ from app.auth import get_current_user, require_role
 
 router = APIRouter(prefix="/api/trainings", tags=["Trainings"])
 
-import tempfile
-
-def get_upload_dir() -> str:
-    primary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "static", "uploads", "trainings")
-    try:
-        os.makedirs(primary, exist_ok=True)
-        test_file = os.path.join(primary, ".test_write")
-        with open(test_file, "w") as f:
-            f.write("test")
-        os.remove(test_file)
-        return primary
-    except Exception:
-        fallback = os.path.join(tempfile.gettempdir(), "uploads", "trainings")
-        os.makedirs(fallback, exist_ok=True)
-        return fallback
+import base64
+import mimetypes
+from fastapi.responses import Response
 
 def format_file_size(size_in_bytes: int) -> str:
     if size_in_bytes < 1024:
@@ -49,6 +37,7 @@ def get_all_trainings(
 
     out = []
     for tr in trainings:
+        file_url = tr.file_url if tr.file_url else f"/api/trainings/{tr.id}/download"
         out.append(
             TrainingItem(
                 id=tr.id,
@@ -56,13 +45,42 @@ def get_all_trainings(
                 description=tr.description or "",
                 category=tr.category,
                 file_filename=tr.file_filename,
-                file_url=tr.file_url,
+                file_url=file_url,
                 file_size_formatted=format_file_size(tr.file_size_bytes or 0),
                 uploaded_by_name=tr.uploaded_by_name,
                 created_at=tr.created_at.strftime("%d/%m/%Y %H:%M") if tr.created_at else ""
             )
         )
     return out
+
+@router.get("/{training_id}/download")
+def download_training_file(
+    training_id: int,
+    db: Session = Depends(get_db)
+):
+    tr = db.query(Training).filter(Training.id == training_id).first()
+    if not tr:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Material não encontrado.")
+
+    if not tr.file_data_base64:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conteúdo do arquivo não está disponível no banco.")
+
+    try:
+        file_bytes = base64.b64decode(tr.file_data_base64)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Erro ao decodificar o arquivo.")
+
+    mime_type, _ = mimetypes.guess_type(tr.file_filename)
+    if not mime_type:
+        mime_type = "application/pdf" if tr.file_filename.lower().endswith(".pdf") else "application/octet-stream"
+
+    return Response(
+        content=file_bytes,
+        media_type=mime_type,
+        headers={
+            "Content-Disposition": f'inline; filename="{tr.file_filename}"'
+        }
+    )
 
 @router.post("", response_model=TrainingItem)
 async def upload_training(
@@ -80,33 +98,34 @@ async def upload_training(
         )
 
     try:
-        upload_dir = get_upload_dir()
         original_filename = file.filename
-        ext = os.path.splitext(original_filename)[1].lower()
-        
-        unique_filename = f"{uuid.uuid4().hex}{ext}"
-        file_path = os.path.join(upload_dir, unique_filename)
-
         file_bytes = await file.read()
         file_size = len(file_bytes)
 
-        with open(file_path, "wb") as f:
-            f.write(file_bytes)
+        if file_size > 12 * 1024 * 1024:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O arquivo enviado é muito grande (máximo 12MB). Por favor, comprima ou reduza o tamanho do PDF."
+            )
 
-        file_url = f"/static/uploads/trainings/{unique_filename}"
+        b64_data = base64.b64encode(file_bytes).decode('utf-8')
 
         tr = Training(
             title=title.strip(),
             description=description.strip() if description else "",
             category=category.strip(),
             file_filename=original_filename,
-            file_url=file_url,
+            file_url="",
             file_size_bytes=file_size,
+            file_data_base64=b64_data,
             uploaded_by_name=current_user.name
         )
         db.add(tr)
         db.commit()
         db.refresh(tr)
+
+        tr.file_url = f"/api/trainings/{tr.id}/download"
+        db.commit()
 
         return TrainingItem(
             id=tr.id,
@@ -139,16 +158,6 @@ def delete_training(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Treinamento não localizado."
         )
-
-    # Try removing physical file
-    if tr.file_url.startswith("/static/uploads/trainings/"):
-        fname = os.path.basename(tr.file_url)
-        fpath = os.path.join(UPLOAD_DIR, fname)
-        if os.path.exists(fpath):
-            try:
-                os.remove(fpath)
-            except Exception:
-                pass
 
     db.delete(tr)
     db.commit()
