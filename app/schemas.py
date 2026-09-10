@@ -47,6 +47,7 @@ class CollaboratorDashboardResponse(BaseModel):
     name: str
     competencia: str
     performance_pct: float
+    rating: Optional[str] = "Rating B"
     rv_prevista: float
     rv_maxima: float
     ranking_pos: int
@@ -71,6 +72,7 @@ class TeamMemberItem(BaseModel):
     role: str
     masked_cpf: str
     performance_pct: float
+    rating: Optional[str] = "Rating B"
     rv_prevista: float
     status: str
     ranking_pos: int
@@ -135,6 +137,7 @@ class RecordSample(BaseModel):
     cargo: str
     masked_cpf: str
     performance_pct: float
+    rating: Optional[str] = "Rating B"
     rv_prevista: float
     rv_maxima: float
     status: str
