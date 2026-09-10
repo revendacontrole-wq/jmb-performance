@@ -138,6 +138,8 @@ const app = {
       document.getElementById('collabSubtext').textContent = `Competência ${data.competencia}`;
 
       document.getElementById('valPerfGeral').textContent = `${data.performance_pct.toFixed(1)}%`;
+      const elRating = document.getElementById('valRatingTag');
+      if (elRating) elRating.textContent = data.rating || 'Rating B';
       document.getElementById('valRvPrevista').textContent = `R$ ${data.rv_prevista.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
       document.getElementById('valRanking').textContent = `${data.ranking_pos}º`;
       document.getElementById('subRanking').textContent = `de ${data.ranking_total} colaboradores`;
@@ -706,6 +708,7 @@ const app = {
           <td>${m.role}</td>
           <td><code>${m.masked_cpf}</code></td>
           <td>${m.performance_pct.toFixed(1)}%</td>
+          <td><span style="font-weight:700; color:#0047BA; background:#EFF6FF; padding:0.15rem 0.4rem; border-radius:4px; border:1px solid #BFDBFE;">${m.rating || 'Rating B'}</span></td>
           <td>R$ ${m.rv_prevista.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
           <td><span class="badge-status status-${m.status.toLowerCase()}">${m.status}</span></td>
         </tr>
@@ -887,6 +890,7 @@ const app = {
           <td><strong>${s.nome}</strong></td>
           <td>${s.cargo}</td>
           <td>${s.performance_pct.toFixed(1)}%</td>
+          <td><span style="font-weight:700; color:#0047BA; background:#EFF6FF; padding:0.15rem 0.4rem; border-radius:4px;">${s.rating || 'Rating B'}</span></td>
           <td>R$ ${s.rv_prevista.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
           <td><span class="badge-status status-${s.status.toLowerCase()}">${s.status}</span></td>
         </tr>
