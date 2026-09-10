@@ -63,6 +63,7 @@ def get_supervisor_dashboard(
             status_str = "VERMELHO"
             fora_meta += 1
 
+        rating_val = getattr(r, 'rating', 'Rating B') if r else ('Rating A' if perf_pct >= 100 else ('Rating B' if perf_pct >= 90 else ('Rating C' if perf_pct >= 75 else 'Rating D')))
         team_items.append(
             TeamMemberItem(
                 id=sub.id,
@@ -71,6 +72,7 @@ def get_supervisor_dashboard(
                 role=sub.role,
                 masked_cpf=mask_cpf(sub.cpf),
                 performance_pct=perf_pct,
+                rating=rating_val,
                 rv_prevista=rv_prev,
                 status=status_str,
                 ranking_pos=rank_pos
