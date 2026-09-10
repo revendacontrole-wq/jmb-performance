@@ -30,6 +30,7 @@ class PerformanceRecord(Base):
     cargo = Column(String, nullable=False)
 
     performance_pct = Column(Float, default=0.0)
+    rating = Column(String, default="Rating B")
     rv_prevista = Column(Float, default=0.0)
     rv_maxima = Column(Float, default=1000.0)
     ranking_pos = Column(Integer, default=1)
