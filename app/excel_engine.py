@@ -474,6 +474,17 @@ def parse_excel_file(contents: bytes, filename: str, competencia_input: str) -> 
         perf = min(100.0, max(50.0, round(ratio * 100, 1)))
         rec["performance_pct"] = perf
 
+        # Rating: use pre-parsed value if present, else calculate automatically by performance percentage
+        if not rec.get("rating"):
+            if perf >= 100.0:
+                rec["rating"] = "Rating A"
+            elif perf >= 90.0:
+                rec["rating"] = "Rating B"
+            elif perf >= 75.0:
+                rec["rating"] = "Rating C"
+            else:
+                rec["rating"] = "Rating D"
+
         if rec["nome"] == "NOME NÃO LOCALIZADO":
             has_unlocated_names = True
 
@@ -484,6 +495,7 @@ def parse_excel_file(contents: bytes, filename: str, competencia_input: str) -> 
                 "cargo": rec["cargo"],
                 "masked_cpf": mask_cpf(rec["cpf"]),
                 "performance_pct": rec["performance_pct"],
+                "rating": rec["rating"],
                 "rv_prevista": rec["rv_prevista"],
                 "rv_maxima": rec["rv_maxima"],
                 "status": "VERDE" if rec["performance_pct"] >= 90 else ("AMARELO" if rec["performance_pct"] >= 75 else "VERMELHO"),
@@ -583,6 +595,7 @@ def execute_import_confirm(file_token: str, db: Session, current_user_name: str)
             db.add(perf)
 
         perf.performance_pct = rec["performance_pct"]
+        perf.rating = rec.get("rating", "Rating B")
         perf.rv_prevista = rec["rv_prevista"]
         perf.rv_maxima = rec["rv_maxima"]
         perf.ranking_pos = rec["ranking_pos"]
