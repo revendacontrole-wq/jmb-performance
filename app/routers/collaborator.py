@@ -130,6 +130,7 @@ def get_collaborator_dashboard(
         name=current_user.name,
         competencia=perf.competencia,
         performance_pct=perf.performance_pct,
+        rating=getattr(perf, 'rating', 'Rating B') or 'Rating B',
         rv_prevista=perf.rv_prevista,
         rv_maxima=perf.rv_maxima,
         ranking_pos=perf.ranking_pos,
