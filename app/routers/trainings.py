@@ -84,22 +84,43 @@ def download_training_file(
 
 @router.post("", response_model=TrainingItem)
 async def upload_training(
-    title: str = Form(...),
-    category: str = Form(...),
+    payload: Optional[TrainingCreateRequest] = None,
+    title: Optional[str] = Form(None),
+    category: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
-    file: UploadFile = File(...),
+    file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["ADMIN"]))
 ):
-    if not title or len(title.strip()) < 3:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Por favor, digite um título válido para o treinamento."
-        )
-
     try:
-        original_filename = file.filename
-        file_bytes = await file.read()
+        if payload:
+            req_title = payload.title
+            req_cat = payload.category
+            req_desc = payload.description
+            req_filename = payload.filename
+            b64_str = payload.file_b64
+            if "," in b64_str:
+                b64_str = b64_str.split(",")[-1]
+            file_bytes = base64.b64decode(b64_str)
+        elif file and title:
+            req_title = title
+            req_cat = category or "Procedimentos Operacionais"
+            req_desc = description
+            req_filename = file.filename
+            file_bytes = await file.read()
+            b64_str = base64.b64encode(file_bytes).decode('utf-8')
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Por favor, forneça o título e o arquivo a ser enviado."
+            )
+
+        if not req_title or len(req_title.strip()) < 3:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Por favor, digite um título válido para o treinamento."
+            )
+
         file_size = len(file_bytes)
 
         if file_size > 12 * 1024 * 1024:
@@ -108,16 +129,14 @@ async def upload_training(
                 detail="O arquivo enviado é muito grande (máximo 12MB). Por favor, comprima ou reduza o tamanho do PDF."
             )
 
-        b64_data = base64.b64encode(file_bytes).decode('utf-8')
-
         tr = Training(
-            title=title.strip(),
-            description=description.strip() if description else "",
-            category=category.strip(),
-            file_filename=original_filename,
+            title=req_title.strip(),
+            description=req_desc.strip() if req_desc else "",
+            category=req_cat.strip() if req_cat else "Procedimentos Operacionais",
+            file_filename=req_filename,
             file_url="",
             file_size_bytes=file_size,
-            file_data_base64=b64_data,
+            file_data_base64=b64_str,
             uploaded_by_name=current_user.name
         )
         db.add(tr)
