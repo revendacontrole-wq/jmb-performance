@@ -346,8 +346,8 @@ const app = {
     }
 
     const file = fileInput.files[0];
-    if (file.size > 8 * 1024 * 1024) {
-      alert(`⚠️ O arquivo selecionado tem ${(file.size / (1024 * 1024)).toFixed(1)} MB. O tamanho máximo permitido para cada documento é 8 MB. Por favor, comprima o PDF antes de enviar.`);
+    if (file.size > 3 * 1024 * 1024) {
+      alert(`⚠️ O arquivo "${file.name}" possui ${(file.size / (1024 * 1024)).toFixed(1)} MB. O limite máximo para upload direto no servidor é 3.0 MB para evitar falhas de envio.\n\nPor favor, comprima o arquivo (PDF/DOCX) antes de anexar ou insira o link na Descrição.`);
       return;
     }
 
