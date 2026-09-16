@@ -340,23 +340,39 @@ const app = {
     const msgEl = document.getElementById('trainingUploadMsg');
     const btn = document.getElementById('btnSubmitTraining');
 
-    if (!title || !fileInput.files[0]) return;
+    if (!title || !fileInput.files[0]) {
+      alert('Por favor, preencha o título e selecione um arquivo para o treinamento.');
+      return;
+    }
 
-    const formData = new FormData();
-    formData.append('title', title.trim());
-    formData.append('category', category);
-    formData.append('description', desc ? desc.trim() : '');
-    formData.append('file', fileInput.files[0]);
+    const file = fileInput.files[0];
+    if (file.size > 8 * 1024 * 1024) {
+      alert(`⚠️ O arquivo selecionado tem ${(file.size / (1024 * 1024)).toFixed(1)} MB. O tamanho máximo permitido para cada documento é 8 MB. Por favor, comprima o PDF antes de enviar.`);
+      return;
+    }
 
     btn.disabled = true;
     btn.textContent = 'ENVIANDO ARQUIVO...';
     msgEl.style.display = 'none';
 
     try {
+      const b64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+      });
+
       const res = await fetch('/api/trainings', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${this.token}` },
-        body: formData
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({
+          title: title.trim(),
+          category: category,
+          description: desc ? desc.trim() : '',
+          filename: file.name,
+          file_b64: b64Data
+        })
       });
 
       let data = {};
@@ -372,7 +388,7 @@ const app = {
       msgEl.style.background = '#ECFDF5';
       msgEl.style.color = '#065F46';
       msgEl.style.border = '1px solid #A7F3D0';
-      msgEl.textContent = '✅ Material publicado com sucesso! Já está visível para a equipe.';
+      msgEl.textContent = '✅ Material publicado com sucesso! Já está visível para toda a equipe.';
       msgEl.style.display = 'block';
 
       // Clear form inputs
@@ -380,8 +396,9 @@ const app = {
       document.getElementById('textareaTrainingDesc').value = '';
       document.getElementById('fileTraining').value = '';
 
-      // Reload admin list
+      // Reload lists for both Admin and Collaborator views
       this.loadAdminTrainings();
+      this.loadCollaboratorTrainings();
 
     } catch (err) {
       msgEl.style.background = '#FEF2F2';
@@ -439,11 +456,20 @@ const app = {
         headers: this.getAuthHeaders()
       });
 
-      const data = await res.json();
+      let data = {};
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        if (!res.ok) throw new Error(`Erro no servidor (${res.status}): ${text.substring(0, 120)}`);
+      }
+
       if (!res.ok) throw new Error(data.detail || 'Erro ao remover treinamento.');
 
       alert('✅ Material removido com sucesso!');
       this.loadAdminTrainings();
+      this.loadCollaboratorTrainings();
 
     } catch (err) {
       alert(`Erro: ${err.message}`);
