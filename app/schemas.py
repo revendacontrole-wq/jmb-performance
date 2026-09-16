@@ -110,6 +110,13 @@ class FeedbackStatusUpdateRequest(BaseModel):
     admin_notes: Optional[str] = None
 
 # --- Training Schemas ---
+class TrainingCreateRequest(BaseModel):
+    title: str
+    category: str
+    description: Optional[str] = None
+    filename: str
+    file_b64: str
+
 class TrainingItem(BaseModel):
     id: int
     title: str
