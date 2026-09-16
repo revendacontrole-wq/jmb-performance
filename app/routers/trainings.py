@@ -123,10 +123,10 @@ async def upload_training(
 
         file_size = len(file_bytes)
 
-        if file_size > 12 * 1024 * 1024:
+        if file_size > 3.5 * 1024 * 1024:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="O arquivo enviado é muito grande (máximo 12MB). Por favor, comprima ou reduza o tamanho do PDF."
+                detail="O arquivo enviado é muito grande (máximo 3.5 MB no Vercel). Por favor, comprima o arquivo PDF/DOCX ou reduza seu tamanho."
             )
 
         tr = Training(
