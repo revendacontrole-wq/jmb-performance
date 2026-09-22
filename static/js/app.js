@@ -902,32 +902,28 @@ const app = {
       const competencia = document.getElementById('adminSelectCompetencia').value;
       let fileToSend = this.selectedFile;
 
-      // Automatic client-side trimming for large Excel files (> 3.5 MB)
-      if (fileToSend.size > 3.5 * 1024 * 1024 && window.XLSX) {
+      // Automatic client-side compression and sheet filtering for large Excel files (> 2.5 MB)
+      if (fileToSend.size > 2.5 * 1024 * 1024 && window.XLSX) {
         try {
-          btn.textContent = 'OTIMIZANDO PLANILHA (REMOVENDO ABAS EXTRAS)...';
+          btn.textContent = 'COMPRIMINDO E OTIMIZANDO PLANILHA NO NAVEGADOR...';
           const arrayBuffer = await fileToSend.arrayBuffer();
-          const wb = XLSX.read(arrayBuffer, { type: 'array' });
-          const newWb = XLSX.utils.book_new();
-
-          const targetKeywords = ['base mot', 'base aju', 'consolidado rv mot', 'consolidado rv aju'];
-          let addedCount = 0;
-
-          for (const name of wb.SheetNames) {
-            const lowerName = name.toLowerCase();
-            if (targetKeywords.some(kw => lowerName.includes(kw))) {
-              XLSX.utils.book_append_sheet(newWb, wb.Sheets[name], name);
-              addedCount++;
-            }
+          const wb = XLSX.read(arrayBuffer, { type: 'array', cellStyles: false, cellHTML: false, cellImages: false });
+          
+          let targetWb = wb;
+          const targetKeywords = ['base mot', 'base aju', 'consolidado rv mot', 'consolidado rv aju', 'mot', 'aju', 'base', 'consolidado'];
+          const matchedSheets = wb.SheetNames.filter(name => targetKeywords.some(kw => name.toLowerCase().includes(kw)));
+          
+          if (matchedSheets.length > 0 && matchedSheets.length < wb.SheetNames.length) {
+            const newWb = XLSX.utils.book_new();
+            matchedSheets.forEach(name => XLSX.utils.book_append_sheet(newWb, wb.Sheets[name], name));
+            targetWb = newWb;
           }
 
-          if (addedCount > 0) {
-            const outArray = XLSX.write(newWb, { bookType: 'xlsx', type: 'array' });
-            fileToSend = new File([outArray], fileToSend.name, { type: fileToSend.type });
-            console.log(`Planilha otimizada automaticamente de ${(this.selectedFile.size / (1024 * 1024)).toFixed(1)} MB para ${(fileToSend.size / (1024 * 1024)).toFixed(1)} MB!`);
-          }
+          const outArray = XLSX.write(targetWb, { bookType: 'xlsx', type: 'array', compression: true });
+          fileToSend = new File([outArray], fileToSend.name, { type: fileToSend.type });
+          console.log(`Planilha comprimida de ${(this.selectedFile.size / (1024 * 1024)).toFixed(1)} MB para ${(fileToSend.size / (1024 * 1024)).toFixed(1)} MB!`);
         } catch (optErr) {
-          console.warn('Falha ao otimizar planilha no navegador:', optErr);
+          console.warn('Falha ao comprimir planilha no navegador:', optErr);
         }
       }
 
