@@ -88,32 +88,46 @@ async def upload_training(
     title: Optional[str] = Form(None),
     category: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
+    file_url_input: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["ADMIN"]))
 ):
     try:
+        req_title = None
+        req_cat = "Procedimentos Operacionais"
+        req_desc = ""
+        req_filename = "Documento / Link"
+        req_file_url = ""
+        b64_str = None
+        file_size = 0
+
         if payload:
             req_title = payload.title
-            req_cat = payload.category
-            req_desc = payload.description
-            req_filename = payload.filename
-            b64_str = payload.file_b64
-            if "," in b64_str:
-                b64_str = b64_str.split(",")[-1]
-            file_bytes = base64.b64decode(b64_str)
-        elif file and title:
+            req_cat = payload.category or "Procedimentos Operacionais"
+            req_desc = payload.description or ""
+            if payload.file_url and payload.file_url.strip():
+                req_file_url = payload.file_url.strip()
+                req_filename = payload.filename or "Link do Documento / Vídeo"
+            elif payload.file_b64 and payload.file_b64.strip():
+                req_filename = payload.filename or "arquivo"
+                b64_str = payload.file_b64.strip()
+                if "," in b64_str:
+                    b64_str = b64_str.split(",")[-1]
+                file_bytes = base64.b64decode(b64_str)
+                file_size = len(file_bytes)
+        elif title:
             req_title = title
             req_cat = category or "Procedimentos Operacionais"
-            req_desc = description
-            req_filename = file.filename
-            file_bytes = await file.read()
-            b64_str = base64.b64encode(file_bytes).decode('utf-8')
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Por favor, forneça o título e o arquivo a ser enviado."
-            )
+            req_desc = description or ""
+            if file_url_input and file_url_input.strip():
+                req_file_url = file_url_input.strip()
+                req_filename = "Link do Documento / Vídeo"
+            elif file:
+                req_filename = file.filename
+                file_bytes = await file.read()
+                file_size = len(file_bytes)
+                b64_str = base64.b64encode(file_bytes).decode('utf-8')
 
         if not req_title or len(req_title.strip()) < 3:
             raise HTTPException(
@@ -121,12 +135,16 @@ async def upload_training(
                 detail="Por favor, digite um título válido para o treinamento."
             )
 
-        file_size = len(file_bytes)
-
-        if file_size > 3.5 * 1024 * 1024:
+        if not req_file_url and not b64_str:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="O arquivo enviado é muito grande (máximo 3.5 MB no Vercel). Por favor, comprima o arquivo PDF/DOCX ou reduza seu tamanho."
+                detail="Por favor, informe o Link do Documento/Vídeo ou selecione um Arquivo de até 2.0 MB para anexar."
+            )
+
+        if b64_str and file_size > 2.5 * 1024 * 1024:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O arquivo enviado é muito grande para upload direto no servidor (máximo 2.0 MB). Por favor, insira o Link do documento (Google Drive / OneDrive / Canva) ou comprima o PDF."
             )
 
         tr = Training(
@@ -134,17 +152,20 @@ async def upload_training(
             description=req_desc.strip() if req_desc else "",
             category=req_cat.strip() if req_cat else "Procedimentos Operacionais",
             file_filename=req_filename,
-            file_url="",
+            file_url=req_file_url,
             file_size_bytes=file_size,
-            file_data_base64=b64_str,
+            file_data_base64=b64_str if b64_str else None,
             uploaded_by_name=current_user.name
         )
         db.add(tr)
         db.commit()
         db.refresh(tr)
 
-        tr.file_url = f"/api/trainings/{tr.id}/download"
-        db.commit()
+        if not req_file_url:
+            tr.file_url = f"/api/trainings/{tr.id}/download"
+            db.commit()
+
+        size_formatted = "Link Externo" if req_file_url else format_file_size(tr.file_size_bytes)
 
         return TrainingItem(
             id=tr.id,
@@ -153,7 +174,7 @@ async def upload_training(
             category=tr.category,
             file_filename=tr.file_filename,
             file_url=tr.file_url,
-            file_size_formatted=format_file_size(tr.file_size_bytes),
+            file_size_formatted=size_formatted,
             uploaded_by_name=tr.uploaded_by_name,
             created_at=tr.created_at.strftime("%d/%m/%Y %H:%M") if tr.created_at else ""
         )
@@ -162,7 +183,7 @@ async def upload_training(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao salvar arquivo de treinamento: {str(e)}"
+            detail=f"Erro ao salvar material: {str(e)}"
         )
 
 @router.delete("/{training_id}")
