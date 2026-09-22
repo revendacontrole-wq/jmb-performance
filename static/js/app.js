@@ -336,33 +336,40 @@ const app = {
     const title = document.getElementById('inputTrainingTitle').value;
     const category = document.getElementById('selectTrainingCategory').value;
     const desc = document.getElementById('textareaTrainingDesc').value;
+    const urlInput = document.getElementById('inputTrainingUrl');
+    const urlVal = urlInput ? urlInput.value.trim() : '';
     const fileInput = document.getElementById('fileTraining');
     const msgEl = document.getElementById('trainingUploadMsg');
     const btn = document.getElementById('btnSubmitTraining');
 
-    if (!title || !fileInput.files[0]) {
-      alert('Por favor, preencha o título e selecione um arquivo para o treinamento.');
+    if (!title || (!urlVal && !fileInput.files[0])) {
+      alert('Por favor, preencha o título e informe o Link do Documento/Vídeo OU selecione um Arquivo.');
       return;
     }
 
-    const file = fileInput.files[0];
-    if (file.size > 3 * 1024 * 1024) {
-      alert(`⚠️ O arquivo "${file.name}" possui ${(file.size / (1024 * 1024)).toFixed(1)} MB. O limite máximo para upload direto no servidor é 3.0 MB para evitar falhas de envio.\n\nPor favor, comprima o arquivo (PDF/DOCX) antes de anexar ou insira o link na Descrição.`);
-      return;
-    }
+    let b64Data = null;
+    let fileName = null;
 
-    btn.disabled = true;
-    btn.textContent = 'ENVIANDO ARQUIVO...';
-    msgEl.style.display = 'none';
-
-    try {
-      const b64Data = await new Promise((resolve, reject) => {
+    if (fileInput.files[0]) {
+      const file = fileInput.files[0];
+      if (file.size > 2.5 * 1024 * 1024) {
+        alert(`⚠️ O arquivo "${file.name}" possui ${(file.size / (1024 * 1024)).toFixed(1)} MB. O limite para upload direto no servidor é 2.5 MB.\n\nPor favor, insira o Link do documento (Google Drive / OneDrive) no campo acima ou comprima o arquivo.`);
+        return;
+      }
+      fileName = file.name;
+      b64Data = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
         reader.onerror = error => reject(error);
         reader.readAsDataURL(file);
       });
+    }
 
+    btn.disabled = true;
+    btn.textContent = 'PUBLICANDO MATERIAL...';
+    msgEl.style.display = 'none';
+
+    try {
       const res = await fetch('/api/trainings', {
         method: 'POST',
         headers: this.getAuthHeaders(),
@@ -370,7 +377,8 @@ const app = {
           title: title.trim(),
           category: category,
           description: desc ? desc.trim() : '',
-          filename: file.name,
+          file_url: urlVal || null,
+          filename: fileName || (urlVal ? 'Link do Documento / Vídeo' : 'Arquivo'),
           file_b64: b64Data
         })
       });
@@ -388,12 +396,13 @@ const app = {
       msgEl.style.background = '#ECFDF5';
       msgEl.style.color = '#065F46';
       msgEl.style.border = '1px solid #A7F3D0';
-      msgEl.textContent = '✅ Material publicado com sucesso! Já está visível para toda a equipe.';
+      msgEl.textContent = '✅ Material publicado com sucesso! Já está disponível para a equipe.';
       msgEl.style.display = 'block';
 
       // Clear form inputs
       document.getElementById('inputTrainingTitle').value = '';
       document.getElementById('textareaTrainingDesc').value = '';
+      if (urlInput) urlInput.value = '';
       document.getElementById('fileTraining').value = '';
 
       // Reload lists for both Admin and Collaborator views
