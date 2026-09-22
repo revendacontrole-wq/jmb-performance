@@ -1,4 +1,4 @@
-const CACHE_NAME = 'jmb-perf-v18';
+const CACHE_NAME = 'jmb-perf-v19';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
