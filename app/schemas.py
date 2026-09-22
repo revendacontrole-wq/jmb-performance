@@ -114,8 +114,9 @@ class TrainingCreateRequest(BaseModel):
     title: str
     category: str
     description: Optional[str] = None
-    filename: str
-    file_b64: str
+    file_url: Optional[str] = None
+    filename: Optional[str] = None
+    file_b64: Optional[str] = None
 
 class TrainingItem(BaseModel):
     id: int
