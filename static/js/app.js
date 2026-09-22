@@ -347,40 +347,47 @@ const app = {
       return;
     }
 
-    let b64Data = null;
-    let fileName = null;
-
-    if (fileInput.files[0]) {
-      const file = fileInput.files[0];
-      if (file.size > 2.5 * 1024 * 1024) {
-        alert(`⚠️ O arquivo "${file.name}" possui ${(file.size / (1024 * 1024)).toFixed(1)} MB. O limite para upload direto no servidor é 2.5 MB.\n\nPor favor, insira o Link do documento (Google Drive / OneDrive) no campo acima ou comprima o arquivo.`);
-        return;
-      }
-      fileName = file.name;
-      b64Data = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-        reader.readAsDataURL(file);
-      });
-    }
-
     btn.disabled = true;
     btn.textContent = 'PUBLICANDO MATERIAL...';
     msgEl.style.display = 'none';
 
     try {
-      const res = await fetch('/api/trainings', {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({
+      let reqBody;
+      let headers = {
+        'Authorization': `Bearer ${this.token}`
+      };
+
+      if (fileInput.files[0]) {
+        const file = fileInput.files[0];
+        if (file.size > 3.5 * 1024 * 1024) {
+          alert(`⚠️ O arquivo "${file.name}" possui ${(file.size / (1024 * 1024)).toFixed(1)} MB. O limite para upload direto no servidor é 3.0 MB.\n\nPor favor, insira o Link do documento (Google Drive / OneDrive) no campo acima.`);
+          btn.disabled = false;
+          btn.textContent = 'PUBLICAR MATERIAL';
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('title', title.trim());
+        formData.append('category', category);
+        formData.append('description', desc ? desc.trim() : '');
+        if (urlVal) formData.append('file_url_input', urlVal);
+        formData.append('file', file);
+        reqBody = formData;
+      } else {
+        headers['Content-Type'] = 'application/json';
+        reqBody = JSON.stringify({
           title: title.trim(),
           category: category,
           description: desc ? desc.trim() : '',
-          file_url: urlVal || null,
-          filename: fileName || (urlVal ? 'Link do Documento / Vídeo' : 'Arquivo'),
-          file_b64: b64Data
-        })
+          file_url: urlVal,
+          filename: 'Link do Documento / Vídeo'
+        });
+      }
+
+      const res = await fetch('/api/trainings', {
+        method: 'POST',
+        headers: headers,
+        body: reqBody
       });
 
       let data = {};
