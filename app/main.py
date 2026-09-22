@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 import os
 
@@ -14,6 +15,9 @@ Base.metadata.create_all(bind=engine)
 seed_database()
 
 app = FastAPI(title=settings.PROJECT_NAME)
+
+# Enable GZip Compression for superfast response transfer
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,7 +36,7 @@ app.include_router(campaigns.router)
 app.include_router(feedback.router)
 app.include_router(trainings.router)
 
-# Dynamic Route for Uploaded Training Files (supports Vercel /tmp)
+# Dynamic Route for Uploaded Training Files
 @app.get("/static/uploads/trainings/{filename}")
 def serve_training_upload_file(filename: str):
     import tempfile
@@ -54,7 +58,7 @@ def get_manifest():
 
 @app.get("/sw.js")
 def get_sw():
-    return FileResponse(os.path.join(static_dir, "sw.js"), media_type="application/javascript")
+    return FileResponse(os.path.join(static_dir, "sw.js"), media_type="application/javascript", headers={"Cache-Control": "no-cache"})
 
 @app.get("/{full_path:path}")
 def serve_spa(full_path: str):
