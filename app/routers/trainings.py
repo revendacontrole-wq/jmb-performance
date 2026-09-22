@@ -1,6 +1,9 @@
 import os
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, status
+import base64
+import mimetypes
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi.responses import Response, RedirectResponse
 from sqlalchemy.orm import Session
 from typing import Optional, List
 
@@ -10,10 +13,6 @@ from app.schemas import TrainingItem
 from app.auth import get_current_user, require_role
 
 router = APIRouter(prefix="/api/trainings", tags=["Trainings"])
-
-import base64
-import mimetypes
-from fastapi.responses import Response
 
 def format_file_size(size_in_bytes: int) -> str:
     if size_in_bytes < 1024:
@@ -46,7 +45,7 @@ def get_all_trainings(
                 category=tr.category,
                 file_filename=tr.file_filename,
                 file_url=file_url,
-                file_size_formatted=format_file_size(tr.file_size_bytes or 0),
+                file_size_formatted="Link Externo" if (tr.file_url and tr.file_url.startswith("http")) else format_file_size(tr.file_size_bytes or 0),
                 uploaded_by_name=tr.uploaded_by_name,
                 created_at=tr.created_at.strftime("%d/%m/%Y %H:%M") if tr.created_at else ""
             )
@@ -63,6 +62,8 @@ def download_training_file(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Material não encontrado.")
 
     if not tr.file_data_base64:
+        if tr.file_url and tr.file_url.startswith("http"):
+            return RedirectResponse(url=tr.file_url)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conteúdo do arquivo não está disponível no banco.")
 
     try:
@@ -84,12 +85,7 @@ def download_training_file(
 
 @router.post("", response_model=TrainingItem)
 async def upload_training(
-    payload: Optional[TrainingCreateRequest] = None,
-    title: Optional[str] = Form(None),
-    category: Optional[str] = Form(None),
-    description: Optional[str] = Form(None),
-    file_url_input: Optional[str] = Form(None),
-    file: Optional[UploadFile] = File(None),
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["ADMIN"]))
 ):
@@ -102,55 +98,70 @@ async def upload_training(
         b64_str = None
         file_size = 0
 
-        if payload:
-            req_title = payload.title
-            req_cat = payload.category or "Procedimentos Operacionais"
-            req_desc = payload.description or ""
-            if payload.file_url and payload.file_url.strip():
-                req_file_url = payload.file_url.strip()
-                req_filename = payload.filename or "Link do Documento / Vídeo"
-            elif payload.file_b64 and payload.file_b64.strip():
-                req_filename = payload.filename or "arquivo"
-                b64_str = payload.file_b64.strip()
+        content_type = request.headers.get("content-type", "")
+
+        if "application/json" in content_type:
+            try:
+                body_json = await request.json()
+            except Exception:
+                raise HTTPException(status_code=400, detail="Corpo da requisição JSON inválido.")
+            
+            req_title = body_json.get("title")
+            req_cat = body_json.get("category") or "Procedimentos Operacionais"
+            req_desc = body_json.get("description") or ""
+            req_file_url = (body_json.get("file_url") or "").strip()
+            req_filename = body_json.get("filename") or "Documento"
+            b64_str = body_json.get("file_b64") or ""
+
+            if b64_str and b64_str.strip():
+                b64_str = b64_str.strip()
                 if "," in b64_str:
                     b64_str = b64_str.split(",")[-1]
-                file_bytes = base64.b64decode(b64_str)
-                file_size = len(file_bytes)
-        elif title:
-            req_title = title
-            req_cat = category or "Procedimentos Operacionais"
-            req_desc = description or ""
-            if file_url_input and file_url_input.strip():
-                req_file_url = file_url_input.strip()
-                req_filename = "Link do Documento / Vídeo"
-            elif file:
-                req_filename = file.filename
-                file_bytes = await file.read()
-                file_size = len(file_bytes)
-                b64_str = base64.b64encode(file_bytes).decode('utf-8')
+                try:
+                    file_bytes = base64.b64decode(b64_str)
+                    file_size = len(file_bytes)
+                except Exception:
+                    raise HTTPException(status_code=400, detail="Conteúdo Base64 do arquivo inválido.")
+        else:
+            # Multipart / Form Data handler
+            form = await request.form()
+            req_title = form.get("title")
+            req_cat = form.get("category") or "Procedimentos Operacionais"
+            req_desc = form.get("description") or ""
+            req_file_url = (form.get("file_url_input") or form.get("file_url") or "").strip()
 
-        if not req_title or len(req_title.strip()) < 3:
+            uploaded_file = form.get("file")
+            if uploaded_file and hasattr(uploaded_file, "filename") and uploaded_file.filename:
+                req_filename = uploaded_file.filename
+                file_bytes = await uploaded_file.read()
+                file_size = len(file_bytes)
+                b64_str = base64.b64encode(file_bytes).decode("utf-8")
+            else:
+                req_filename = form.get("filename") or "Link do Documento / Vídeo"
+
+        if not req_title or len(str(req_title).strip()) < 3:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Por favor, digite um título válido para o treinamento."
+                detail="Por favor, digite um título válido para o treinamento (mínimo 3 caracteres)."
             )
 
         if not req_file_url and not b64_str:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Por favor, informe o Link do Documento/Vídeo ou selecione um Arquivo de até 2.0 MB para anexar."
+                detail="Por favor, informe o Link do Documento/Vídeo ou selecione um Arquivo para anexar."
             )
 
-        if b64_str and file_size > 2.5 * 1024 * 1024:
+        # Safety check: max 3.5 MB per direct upload
+        if b64_str and file_size > 3.5 * 1024 * 1024:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="O arquivo enviado é muito grande para upload direto no servidor (máximo 2.0 MB). Por favor, insira o Link do documento (Google Drive / OneDrive / Canva) ou comprima o PDF."
+                detail="O arquivo enviado é muito grande (máximo 3.0 MB). Por favor, utilize o campo de Link do Google Drive/OneDrive."
             )
 
         tr = Training(
-            title=req_title.strip(),
-            description=req_desc.strip() if req_desc else "",
-            category=req_cat.strip() if req_cat else "Procedimentos Operacionais",
+            title=str(req_title).strip(),
+            description=str(req_desc).strip() if req_desc else "",
+            category=str(req_cat).strip() if req_cat else "Procedimentos Operacionais",
             file_filename=req_filename,
             file_url=req_file_url,
             file_size_bytes=file_size,
@@ -165,7 +176,7 @@ async def upload_training(
             tr.file_url = f"/api/trainings/{tr.id}/download"
             db.commit()
 
-        size_formatted = "Link Externo" if req_file_url else format_file_size(tr.file_size_bytes)
+        size_formatted = "Link Externo" if req_file_url else format_file_size(tr.file_size_bytes or 0)
 
         return TrainingItem(
             id=tr.id,
