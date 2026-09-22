@@ -892,19 +892,69 @@ const app = {
   async analyzeExcelFile() {
     if (!this.selectedFile) return;
 
-    const competencia = document.getElementById('adminSelectCompetencia').value;
-    const formData = new FormData();
-    formData.append('file', this.selectedFile);
-    formData.append('competencia', competencia);
+    const btn = document.querySelector('button[onclick="app.analyzeExcelFile()"]');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'ANALISANDO PLANILHA...';
+    }
 
     try {
+      const competencia = document.getElementById('adminSelectCompetencia').value;
+      let fileToSend = this.selectedFile;
+
+      // Automatic client-side trimming for large Excel files (> 3.5 MB)
+      if (fileToSend.size > 3.5 * 1024 * 1024 && window.XLSX) {
+        try {
+          btn.textContent = 'OTIMIZANDO PLANILHA (REMOVENDO ABAS EXTRAS)...';
+          const arrayBuffer = await fileToSend.arrayBuffer();
+          const wb = XLSX.read(arrayBuffer, { type: 'array' });
+          const newWb = XLSX.utils.book_new();
+
+          const targetKeywords = ['base mot', 'base aju', 'consolidado rv mot', 'consolidado rv aju'];
+          let addedCount = 0;
+
+          for (const name of wb.SheetNames) {
+            const lowerName = name.toLowerCase();
+            if (targetKeywords.some(kw => lowerName.includes(kw))) {
+              XLSX.utils.book_append_sheet(newWb, wb.Sheets[name], name);
+              addedCount++;
+            }
+          }
+
+          if (addedCount > 0) {
+            const outArray = XLSX.write(newWb, { bookType: 'xlsx', type: 'array' });
+            fileToSend = new File([outArray], fileToSend.name, { type: fileToSend.type });
+            console.log(`Planilha otimizada automaticamente de ${(this.selectedFile.size / (1024 * 1024)).toFixed(1)} MB para ${(fileToSend.size / (1024 * 1024)).toFixed(1)} MB!`);
+          }
+        } catch (optErr) {
+          console.warn('Falha ao otimizar planilha no navegador:', optErr);
+        }
+      }
+
+      btn.textContent = 'ENVIANDO PARA O SERVIDOR...';
+
+      const formData = new FormData();
+      formData.append('file', fileToSend);
+      formData.append('competencia', competencia);
+
       const res = await fetch('/api/admin/import/preview', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${this.token}` },
         body: formData
       });
 
-      const data = await res.json();
+      let data = {};
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        if (res.status === 413 || text.includes('Request Entity Too Large') || text.includes('FUNCTION_INVOCATION_FAILED')) {
+          throw new Error(`A planilha "${this.selectedFile.name}" possui ${(this.selectedFile.size / (1024 * 1024)).toFixed(1)} MB, excedendo o limite da Vercel (máximo 4.5 MB).\n\nPara importar:\n1. Abra a planilha e salve uma cópia rápida contendo apenas as abas principais (Consolidado RV MOT, Consolidado RV AJU, Base Mot, Base Aju).\n2. Ou remova abas de gráficos/dados brutos extras.`);
+        }
+        throw new Error(`Erro no servidor (${res.status}): ${text.substring(0, 120)}`);
+      }
+
       if (!res.ok) {
         throw new Error(data.detail || 'Erro ao analisar a planilha.');
       }
@@ -947,6 +997,11 @@ const app = {
 
     } catch (err) {
       alert(`Erro: ${err.message}`);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'ANALISAR PLANILHA';
+      }
     }
   },
 
