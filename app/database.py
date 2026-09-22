@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from app.config import settings
@@ -7,6 +7,18 @@ engine = create_engine(
     settings.DATABASE_URL,
     connect_args={"check_same_thread": False}
 )
+
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    try:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute("PRAGMA cache_size=-64000")  # 64 MB memory cache
+        cursor.execute("PRAGMA temp_store=MEMORY")
+        cursor.close()
+    except Exception:
+        pass
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
