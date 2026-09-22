@@ -337,14 +337,18 @@ const app = {
     const category = document.getElementById('selectTrainingCategory').value;
     const desc = document.getElementById('textareaTrainingDesc').value;
     const urlInput = document.getElementById('inputTrainingUrl');
-    const urlVal = urlInput ? urlInput.value.trim() : '';
+    let urlVal = urlInput ? urlInput.value.trim() : '';
     const fileInput = document.getElementById('fileTraining');
     const msgEl = document.getElementById('trainingUploadMsg');
     const btn = document.getElementById('btnSubmitTraining');
 
-    if (!title || (!urlVal && !fileInput.files[0])) {
-      alert('Por favor, preencha o título e informe o Link do Documento/Vídeo OU selecione um Arquivo.');
+    if (!title || title.trim().length < 3) {
+      alert('Por favor, informe um Título com no mínimo 3 caracteres.');
       return;
+    }
+
+    if (urlVal && !urlVal.startsWith('http://') && !urlVal.startsWith('https://')) {
+      urlVal = 'https://' + urlVal;
     }
 
     btn.disabled = true;
@@ -379,8 +383,8 @@ const app = {
           title: title.trim(),
           category: category,
           description: desc ? desc.trim() : '',
-          file_url: urlVal,
-          filename: 'Link do Documento / Vídeo'
+          file_url: urlVal || '',
+          filename: urlVal ? 'Link do Documento / Vídeo' : 'Instrução em Texto'
         });
       }
 
