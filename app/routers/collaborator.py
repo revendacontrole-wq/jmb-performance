@@ -140,6 +140,27 @@ def get_collaborator_dashboard(
         available_competencias=available_competencias
     )
 
+MONTH_MAP = {
+    "janeiro": "01", "fevereiro": "02", "março": "03", "marco": "03",
+    "abril": "04", "maio": "05", "junho": "06", "julho": "07",
+    "agosto": "08", "setembro": "09", "outubro": "10", "novembro": "11", "dezembro": "12"
+}
+
+def get_month_year_from_competencia(comp_str: str):
+    if not comp_str:
+        return "07", "2026"
+    comp_lower = comp_str.lower().strip()
+    year = "2026"
+    if "/" in comp_str:
+        parts = comp_str.split("/")
+        month_part = parts[0].lower().strip()
+        year = parts[1].strip()
+    else:
+        month_part = comp_lower
+    
+    month_num = MONTH_MAP.get(month_part, "07")
+    return month_num, year
+
 @router.get("/daily", response_model=List[Dict[str, Any]])
 def get_collaborator_daily(
     competencia: Optional[str] = Query(None),
@@ -152,13 +173,15 @@ def get_collaborator_daily(
         DailyPerformanceRecord.competencia == comp_target
     ).order_by(DailyPerformanceRecord.day_num.asc()).all()
 
+    m_num, m_year = get_month_year_from_competencia(comp_target)
+
     if not records:
-        # Fallback 31-day calendar structure for users without specific daily records
+        # Fallback 31-day calendar structure matching the selected competence month
         out = []
         for d in range(1, 32):
             out.append({
                 "day_num": d,
-                "date_str": f"{str(d).zfill(2)}/07/2026",
+                "date_str": f"{str(d).zfill(2)}/{m_num}/{m_year}",
                 "rv_dia": 0.0,
                 "rv_acumulada": 0.0,
                 "caixas": 0.0,
