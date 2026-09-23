@@ -20,29 +20,38 @@ def get_collaborator_dashboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["MOTORISTA", "AJUDANTE", "SUPERVISOR", "ADMIN"]))
 ):
-    # Fetch all stored competencies for user
-    records = db.query(PerformanceRecord).filter(PerformanceRecord.user_id == current_user.id).order_by(PerformanceRecord.created_at.desc()).all()
+    # Fetch all stored competencies in system (newest first)
+    all_comp_recs = db.query(PerformanceRecord.competencia).distinct().all()
+    system_comps = [c[0] for c in all_comp_recs if c[0]]
     
-    if not records:
-        available_competencias = ["Julho/2026"]
-        target_comp = competencia or "Julho/2026"
+    if not system_comps:
+        system_comps = ["Setembro/2026", "Agosto/2026", "Julho/2026"]
+    else:
+        # Sort system_comps so Setembro/2026, Agosto/2026 come first
+        def comp_sort_key(c_str):
+            m_num, year = get_month_year_from_competencia(c_str)
+            return f"{year}{m_num}"
+        system_comps.sort(key=comp_sort_key, reverse=True)
+
+    available_competencias = list(dict.fromkeys(system_comps))
+    target_comp = competencia or available_competencias[0]
+
+    # Fetch user's performance record for the target competence
+    user_records = db.query(PerformanceRecord).filter(PerformanceRecord.user_id == current_user.id).all()
+    perf = next((r for r in user_records if r.competencia == target_comp), None)
+
+    if not perf:
         perf = PerformanceRecord(
             user_id=current_user.id,
             matricula=current_user.matricula or "000",
             competencia=target_comp,
             cargo=current_user.role,
             performance_pct=90.0,
-            rv_prevista=750.0,
+            rv_prevista=750.0 if current_user.role == "MOTORISTA" else 600.0,
             rv_maxima=1000.0 if current_user.role == "MOTORISTA" else 800.0,
             ranking_pos=1,
             ranking_total=1
         )
-    else:
-        available_competencias = list(dict.fromkeys([r.competencia for r in records]))
-        if competencia:
-            perf = next((r for r in records if r.competencia == competencia), records[0])
-        else:
-            perf = records[0]
 
     # Build 6 Indicator Items
     indicators = [
