@@ -4,8 +4,9 @@ from datetime import datetime
 
 # --- Auth ---
 class LoginRequest(BaseModel):
-    cpf: str
-    password: str
+    cpf: Optional[str] = ""
+    email: Optional[str] = ""
+    password: str = ""
 
 class UserProfileResponse(BaseModel):
     id: int
