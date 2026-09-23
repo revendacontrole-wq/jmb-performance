@@ -78,6 +78,29 @@ def parse_excel_file(contents: bytes, filename: str, competencia_input: str) -> 
         except Exception as e:
             errors.append({"aba": "Base Aju", "colaborador": "Geral", "campo": "Estrutura", "problema": f"Erro na leitura da Base Aju: {str(e)}"})
 
+    MONTH_MAP = {
+        "janeiro": "01", "fevereiro": "02", "março": "03", "marco": "03",
+        "abril": "04", "maio": "05", "junho": "06", "julho": "07",
+        "agosto": "08", "setembro": "09", "outubro": "10", "novembro": "11", "dezembro": "12"
+    }
+
+    def get_month_year_from_competencia(comp_str: str):
+        if not comp_str:
+            return "07", "2026"
+        comp_lower = comp_str.lower().strip()
+        year = "2026"
+        if "/" in comp_str:
+            parts = comp_str.split("/")
+            month_part = parts[0].lower().strip()
+            year = parts[1].strip()
+        else:
+            month_part = comp_lower
+        
+        month_num = MONTH_MAP.get(month_part, "07")
+        return month_num, year
+
+    m_num, m_year = get_month_year_from_competencia(competencia_input)
+
     # Helper function to generate default 31 empty days for a month
     def generate_default_31_days(date_cols_list):
         days = []
@@ -103,7 +126,7 @@ def parse_excel_file(contents: bytes, filename: str, competencia_input: str) -> 
                 })
         else:
             for d_num in range(1, 32):
-                formatted_date = f"{str(d_num).zfill(2)}/07/2026"
+                formatted_date = f"{str(d_num).zfill(2)}/{m_num}/{m_year}"
                 days.append({
                     "day_num": d_num,
                     "date_str": formatted_date,
