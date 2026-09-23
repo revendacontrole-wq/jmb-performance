@@ -10,9 +10,9 @@ from app.auth import verify_password, create_access_token, mask_cpf, clean_cpf
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 class LoginRequest(BaseModel):
-    cpf: Optional[str] = None
-    email: Optional[str] = None
-    password: str
+    cpf: Optional[str] = ""
+    email: Optional[str] = ""
+    password: str = ""
 
 class LoginResponse(BaseModel):
     access_token: str
