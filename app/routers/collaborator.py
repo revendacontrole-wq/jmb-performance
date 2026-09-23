@@ -208,9 +208,15 @@ def get_collaborator_daily(
 
     out = []
     for r in records:
+        real_date_str = r.date_str
+        if real_date_str and "/" in real_date_str:
+            parts = real_date_str.split("/")
+            if len(parts) == 3:
+                real_date_str = f"{parts[0]}/{m_num}/{m_year}"
+
         out.append({
             "day_num": r.day_num,
-            "date_str": r.date_str,
+            "date_str": real_date_str,
             "rv_dia": r.rv_dia,
             "rv_acumulada": r.rv_acumulada,
             "caixas": r.caixas,
