@@ -162,6 +162,39 @@
           </div>
         </div>
 
+        <!-- Extra Indicators Section (Mais Resultados de Indicadores: Reposição, Mapas, Entregas) -->
+        <div class="card" style="margin-bottom: 2rem;" id="cardExtraIndicators">
+          <div class="section-title">
+            <span>MAIS RESULTADOS DE INDICADORES (REPOSIÇÃO & OPERACIONAL)</span>
+            <span class="badge-status status-verde" id="badgeExtraStatus">DADOS CONSOLIDADOS</span>
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+            Acompanhamento mensal de Mapas executados, Entregas efetuadas, Caixas movimentadas e % de Reposição.
+          </p>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1rem;" id="gridExtraIndicators">
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1rem; text-align: center;">
+              <span style="font-size: 1.4rem; font-weight: 800; color: #0F172A;" id="extraMapas">--</span>
+              <label style="display: block; font-size: 0.75rem; color: #64748B; margin-top: 0.2rem; font-weight: 600;">MAPAS EXECUTADOS</label>
+            </div>
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1rem; text-align: center;">
+              <span style="font-size: 1.4rem; font-weight: 800; color: #0F172A;" id="extraEntregas">--</span>
+              <label style="display: block; font-size: 0.75rem; color: #64748B; margin-top: 0.2rem; font-weight: 600;">ENTREGAS REALIZADAS</label>
+            </div>
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1rem; text-align: center;">
+              <span style="font-size: 1.4rem; font-weight: 800; color: #0F172A;" id="extraCaixas">--</span>
+              <label style="display: block; font-size: 0.75rem; color: #64748B; margin-top: 0.2rem; font-weight: 600;">CAIXAS ENTREGUES</label>
+            </div>
+            <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1rem; text-align: center;">
+              <span style="font-size: 1.4rem; font-weight: 800; color: #0F172A;" id="extraReposicaoQtd">--</span>
+              <label style="display: block; font-size: 0.75rem; color: #64748B; margin-top: 0.2rem; font-weight: 600;">REPOSIÇÃO (QTD)</label>
+            </div>
+            <div style="background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 12px; padding: 1rem; text-align: center;">
+              <span style="font-size: 1.4rem; font-weight: 800; color: #92400E;" id="extraReposicaoPct">--%</span>
+              <label style="display: block; font-size: 0.75rem; color: #78350F; margin-top: 0.2rem; font-weight: 700;">% REPOSIÇÃO MÊS</label>
+            </div>
+          </div>
+        </div>
+
         <!-- Monthly History Section -->
         <div class="card" style="margin-bottom: 2rem;">
           <div class="section-title">MEU HISTÓRICO DE PERFORMANCE</div>
