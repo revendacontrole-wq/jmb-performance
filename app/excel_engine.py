@@ -7,7 +7,7 @@ import openpyxl
 from typing import Dict, List, Any
 from sqlalchemy.orm import Session
 
-from app.models import User, PerformanceRecord, DailyPerformanceRecord, ImportHistory
+from app.models import User, PerformanceRecord, DailyPerformanceRecord, ImportHistory, ExtraIndicatorRecord
 from app.auth import clean_cpf, mask_cpf, hash_password
 
 PREVIEW_CACHE: Dict[str, Dict[str, Any]] = {}
@@ -377,6 +377,45 @@ def parse_excel_file(contents: bytes, filename: str, competencia_input: str) -> 
     # Combine Base Mot + Base Aju + Consolidated Metrics & Daily
     records_to_process: List[Dict[str, Any]] = []
 
+    # Parse Extra Indicator Sheets (e.g., REPOSIÇÃO MÊS, RATING, DISP TEMPO)
+    extra_indicators_map = {}
+    for sname in sheet_names:
+        if "reposi" in sname.lower():
+            try:
+                df_rep = pd.read_excel(xl, sheet_name=sname)
+                for _, row in df_rep.iterrows():
+                    n_raw = row.get("Motorist Nome") or row.get("Nome Motorista") or row.get("Nome Ajudante") or row.get("Nome")
+                    if pd.notnull(n_raw):
+                        n_str = str(n_raw).strip().upper()
+                        mapas_val = int(float(str(row.get("Mapas", 0)))) if pd.notnull(row.get("Mapas")) else 0
+                        entregas_val = int(float(str(row.get("Entregas", 0)))) if pd.notnull(row.get("Entregas")) else 0
+                        
+                        cx_raw = str(row.get("Entregas Caixas") or row.get("Caixas", 0))
+                        try:
+                            cx_val = float(cx_raw.replace('.', '').replace(',', '.'))
+                        except Exception:
+                            cx_val = 0.0
+
+                        rep_qtd_val = float(str(row.get("Reposição", 0)).replace(',', '.')) if pd.notnull(row.get("Reposição")) else 0.0
+                        
+                        rep_pct_raw = str(row.get("% Reposição", 0)).replace('%', '').replace(',', '.').strip()
+                        try:
+                            rep_pct = float(rep_pct_raw)
+                            if 0.0 < rep_pct < 1.0:
+                                rep_pct = round(rep_pct * 100, 1)
+                        except Exception:
+                            rep_pct = 0.0
+
+                        extra_indicators_map[n_str] = {
+                            "mapas": mapas_val,
+                            "entregas": entregas_val,
+                            "caixas": cx_val,
+                            "reposicao_qtd": rep_qtd_val,
+                            "reposicao_pct": rep_pct
+                        }
+            except Exception as e:
+                print(f"Aviso na leitura da aba {sname}: {e}")
+
     # Process all Motoristas
     all_mot_codes = set(mot_base_map.keys()).union(set(mot_metrics_map.keys()))
     for cod in sorted(all_mot_codes):
@@ -428,7 +467,8 @@ def parse_excel_file(contents: bytes, filename: str, competencia_input: str) -> 
             "dev_status": dev_status,
             "raio_status": raio_status,
             "bh_status": bh_status,
-            "daily_list": daily_list
+            "daily_list": daily_list,
+            "extra_indicators": extra_indicators_map.get(real_name.upper())
         })
 
     # Process all Ajudantes
@@ -480,7 +520,8 @@ def parse_excel_file(contents: bytes, filename: str, competencia_input: str) -> 
             "dev_status": dev_status,
             "raio_status": "VERDE",
             "bh_status": bh_status,
-            "daily_list": daily_list
+            "daily_list": daily_list,
+            "extra_indicators": extra_indicators_map.get(real_name.upper())
         })
 
     records_to_process.sort(key=lambda x: (x["rv_prevista"], x["nome"]), reverse=True)
@@ -681,6 +722,29 @@ def execute_import_confirm(file_token: str, db: Session, current_user_name: str)
                 status_dia=d_item["status_dia"]
             )
             db.add(d_rec)
+
+        # Persist Extra Indicator Record
+        if rec.get("extra_indicators"):
+            db.query(ExtraIndicatorRecord).filter(
+                ExtraIndicatorRecord.user_id == user.id,
+                ExtraIndicatorRecord.competencia == competencia
+            ).delete()
+
+            ex_info = rec["extra_indicators"]
+            ex_rec = ExtraIndicatorRecord(
+                user_id=user.id,
+                matricula=matricula,
+                nome=user.name,
+                competencia=competencia,
+                mapas=ex_info.get("mapas", 0),
+                entregas=ex_info.get("entregas", 0),
+                caixas=ex_info.get("caixas", 0.0),
+                reposicao_qtd=ex_info.get("reposicao_qtd", 0.0),
+                reposicao_pct=ex_info.get("reposicao_pct", 0.0),
+                rating_val=rec.get("rating"),
+                disp_tempo_val=ex_info.get("disp_tempo_val")
+            )
+            db.add(ex_rec)
 
     history = ImportHistory(
         filename=filename,
