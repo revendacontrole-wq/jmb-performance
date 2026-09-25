@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import engine, SessionLocal, Base
-from app.models import User, PerformanceRecord, Campaign, ImportHistory, Training, DailyPerformanceRecord
+from app.models import User, PerformanceRecord, Campaign, ImportHistory, Training, DailyPerformanceRecord, ExtraIndicatorRecord
 from app.auth import hash_password, clean_cpf
 
 def seed_database():
