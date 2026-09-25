@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List, Dict, Any
 
 from app.database import get_db
-from app.models import User, PerformanceRecord, DailyPerformanceRecord
+from app.models import User, PerformanceRecord, DailyPerformanceRecord, ExtraIndicatorRecord
 from app.schemas import (
     CollaboratorDashboardResponse,
     IndicatorItem,
@@ -263,3 +263,44 @@ def get_collaborator_history(
             )
         )
     return history
+
+@router.get("/extra-indicators")
+def get_collaborator_extra_indicators(
+    competencia: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["MOTORISTA", "AJUDANTE", "SUPERVISOR", "ADMIN"]))
+):
+    target_comp = competencia or "Setembro/2026"
+    ex_rec = db.query(ExtraIndicatorRecord).filter(
+        ExtraIndicatorRecord.user_id == current_user.id,
+        ExtraIndicatorRecord.competencia == target_comp
+    ).first()
+
+    if not ex_rec:
+        return {
+            "has_data": False,
+            "competencia": target_comp,
+            "mapas": 0,
+            "entregas": 0,
+            "caixas": 0.0,
+            "reposicao_qtd": 0.0,
+            "reposicao_pct": 0.0,
+            "reposicao_status": "VERDE",
+            "rating": "Rating B",
+            "disp_tempo": "100%"
+        }
+
+    rep_status = "VERDE" if ex_rec.reposicao_pct <= 5.0 else ("AMARELO" if ex_rec.reposicao_pct <= 10.0 else "VERMELHO")
+    return {
+        "has_data": True,
+        "competencia": ex_rec.competencia,
+        "mapas": ex_rec.mapas,
+        "entregas": ex_rec.entregas,
+        "caixas": ex_rec.caixas,
+        "reposicao_qtd": ex_rec.reposicao_qtd,
+        "reposicao_pct": ex_rec.reposicao_pct,
+        "reposicao_status": rep_status,
+        "rating": ex_rec.rating_val or "Rating B",
+        "disp_tempo": ex_rec.disp_tempo_val or "100%"
+    }
+
