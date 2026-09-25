@@ -19,6 +19,8 @@ class User(Base):
     records = relationship("PerformanceRecord", back_populates="user", cascade="all, delete-orphan")
     daily_records = relationship("DailyPerformanceRecord", back_populates="user", cascade="all, delete-orphan")
     feedbacks = relationship("Feedback", back_populates="user", cascade="all, delete-orphan")
+    extra_indicators = relationship("ExtraIndicatorRecord", back_populates="user", cascade="all, delete-orphan")
+
 
 class PerformanceRecord(Base):
     __tablename__ = "performance_records"
@@ -155,3 +157,29 @@ class ImportHistory(Base):
     error_details_json = Column(Text, nullable=True)
     imported_by_name = Column(String, nullable=False)
     imported_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class ExtraIndicatorRecord(Base):
+    __tablename__ = "extra_indicator_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    matricula = Column(String, nullable=False)
+    nome = Column(String, nullable=False)
+    competencia = Column(String, nullable=False, index=True)
+    
+    # Reposição Mês
+    mapas = Column(Integer, default=0)
+    entregas = Column(Integer, default=0)
+    caixas = Column(Float, default=0.0)
+    reposicao_qtd = Column(Float, default=0.0)
+    reposicao_pct = Column(Float, default=0.0)
+    
+    # Rating & Tempo
+    rating_val = Column(String, nullable=True)
+    disp_tempo_val = Column(String, nullable=True)
+    
+    extra_data_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    user = relationship("User", back_populates="extra_indicators")
+
