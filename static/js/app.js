@@ -188,6 +188,9 @@ const app = {
       // Load Daily Indicators Breakdown
       this.loadCollaboratorDaily(data.competencia);
 
+      // Load Extra Indicators (Reposição, Mapas, Entregas)
+      this.loadCollaboratorExtraIndicators(data.competencia);
+
       // Load Collaborator's Own Feedbacks History
       this.loadMyFeedbacks(data.competencia);
 
@@ -205,6 +208,39 @@ const app = {
 
     } catch (err) {
       console.error('Error loading collaborator dashboard:', err);
+    }
+  },
+
+  async loadCollaboratorExtraIndicators(competencia) {
+    try {
+      let url = '/api/collaborator/extra-indicators';
+      if (competencia) url += `?competencia=${encodeURIComponent(competencia)}`;
+
+      const res = await fetch(url, { headers: this.getAuthHeaders() });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      
+      const mapasEl = document.getElementById('extraMapas');
+      const entregasEl = document.getElementById('extraEntregas');
+      const caixasEl = document.getElementById('extraCaixas');
+      const repQtdEl = document.getElementById('extraReposicaoQtd');
+      const repPctEl = document.getElementById('extraReposicaoPct');
+      const badgeStatusEl = document.getElementById('badgeExtraStatus');
+
+      if (mapasEl) mapasEl.textContent = data.mapas || '0';
+      if (entregasEl) entregasEl.textContent = data.entregas || '0';
+      if (caixasEl) caixasEl.textContent = data.caixas ? data.caixas.toLocaleString('pt-BR') : '0';
+      if (repQtdEl) repQtdEl.textContent = data.reposicao_qtd || '0';
+      if (repPctEl) repPctEl.textContent = `${data.reposicao_pct ? data.reposicao_pct.toFixed(1) : '0.0'}%`;
+
+      if (badgeStatusEl) {
+        badgeStatusEl.className = `badge-status status-${(data.reposicao_status || 'VERDE').toLowerCase()}`;
+        badgeStatusEl.textContent = data.has_data ? 'DADOS CONSOLIDADOS' : 'SEM REPOSIÇÃO REGISTRADA';
+      }
+
+    } catch (err) {
+      console.error('Error loading extra indicators:', err);
     }
   },
 
