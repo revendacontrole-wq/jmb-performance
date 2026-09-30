@@ -76,7 +76,7 @@ def get_collaborator_dashboard(
         IndicatorItem(
             key="banco_horas",
             label="Banco de Horas",
-            current_val=perf.banco_horas_val,
+            current_val=format_excel_time(perf.banco_horas_val),
             meta_val=f"≤ {perf.banco_horas_meta}",
             pct=100.0 if perf.banco_horas_status == "VERDE" else 75.0,
             status=perf.banco_horas_status,
@@ -154,6 +154,30 @@ MONTH_MAP = {
     "abril": "04", "maio": "05", "junho": "06", "julho": "07",
     "agosto": "08", "setembro": "09", "outubro": "10", "novembro": "11", "dezembro": "12"
 }
+
+def format_excel_time(val):
+    if val is None or val == "":
+        return "00:00"
+    if isinstance(val, (int, float)):
+        try:
+            total_minutes = int(round(float(val) * 24 * 60))
+            hours = total_minutes // 60
+            mins = total_minutes % 60
+            return f"{hours:02d}:{mins:02d}"
+        except Exception:
+            return "00:00"
+    val_str = str(val).strip()
+    try:
+        f_val = float(val_str)
+        if 0 <= f_val <= 5:  # Excel day fraction
+            total_minutes = int(round(f_val * 24 * 60))
+            hours = total_minutes // 60
+            mins = total_minutes % 60
+            return f"{hours:02d}:{mins:02d}"
+    except Exception:
+        pass
+    return val_str
+
 
 def get_month_year_from_competencia(comp_str: str):
     if not comp_str:
