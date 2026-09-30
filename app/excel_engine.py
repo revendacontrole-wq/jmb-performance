@@ -84,6 +84,30 @@ def parse_excel_file(contents: bytes, filename: str, competencia_input: str) -> 
         "agosto": "08", "setembro": "09", "outubro": "10", "novembro": "11", "dezembro": "12"
     }
 
+    def format_excel_time(val):
+        if val is None or val == "":
+            return "00:00"
+        if isinstance(val, (int, float)):
+            try:
+                total_minutes = int(round(float(val) * 24 * 60))
+                hours = total_minutes // 60
+                mins = total_minutes % 60
+                return f"{hours:02d}:{mins:02d}"
+            except Exception:
+                return "00:00"
+        val_str = str(val).strip()
+        try:
+            f_val = float(val_str)
+            if 0 <= f_val <= 5:  # Excel day fraction
+                total_minutes = int(round(f_val * 24 * 60))
+                hours = total_minutes // 60
+                mins = total_minutes % 60
+                return f"{hours:02d}:{mins:02d}"
+        except Exception:
+            pass
+        return val_str
+
+
     def get_month_year_from_competencia(comp_str: str):
         if not comp_str:
             return "07", "2026"
@@ -438,7 +462,7 @@ def parse_excel_file(contents: bytes, filename: str, competencia_input: str) -> 
         rv_cx = m_info.get("rv_cx", 0.0)
         ad_raio = m_info.get("ad_raio", 1.0)
         devolucao = m_info.get("devolucao", 0.0)
-        bh_val = m_info.get("bh_val", "00:00")
+        bh_val = format_excel_time(m_info.get("bh_val", "00:00"))
         he_cost = m_info.get("he_val", 0.0)
 
         dev_status = "VERDE" if devolucao <= 0.02 else "VERMELHO"
