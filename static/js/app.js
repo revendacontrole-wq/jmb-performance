@@ -803,14 +803,15 @@ const app = {
 
   // --- ADMIN PANEL ---
   switchAdminTab(tabName) {
-    const tabs = ['atualizar', 'feedbacks', 'treinamentos', 'historico', 'colaboradores', 'campanhas'];
+    const tabs = ['visao', 'atualizar', 'feedbacks', 'treinamentos', 'historico', 'colaboradores', 'campanhas'];
     tabs.forEach(t => {
-      const btn = document.querySelector(`.tab-btn[onclick*="${t}"]`);
+      const btn = document.getElementById(`btnAdminTab${t.charAt(0).toUpperCase() + t.slice(1)}`) || document.querySelector(`.tab-btn[onclick*="${t}"]`);
       const sec = document.getElementById(`tabAdmin${t.charAt(0).toUpperCase() + t.slice(1)}`);
       if (btn) btn.classList.toggle('active', t === tabName);
       if (sec) sec.style.display = (t === tabName) ? 'block' : 'none';
     });
 
+    if (tabName === 'visao') this.loadManagerialOverview();
     if (tabName === 'feedbacks') this.loadAdminFeedbacks();
     if (tabName === 'treinamentos') this.loadAdminTrainings();
     if (tabName === 'historico') this.loadImportHistory();
@@ -819,7 +820,199 @@ const app = {
   },
 
   loadAdminDashboard() {
-    this.switchAdminTab('atualizar');
+    this.switchAdminTab('visao');
+  },
+
+  async loadManagerialOverview(competencia = null) {
+    try {
+      let url = '/api/admin/managerial-overview';
+      if (competencia) url += `?competencia=${encodeURIComponent(competencia)}`;
+
+      const res = await fetch(url, { headers: this.getAuthHeaders() });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      
+      if (data.admin_name) {
+        document.getElementById('adminGreetingName').textContent = `Visão Gerencial Executiva • ${data.admin_name}`;
+      }
+
+      document.getElementById('valVisaoTotalCollabs').textContent = data.total_collabs;
+      document.getElementById('valVisaoAvgPerf').textContent = `${data.avg_perf}%`;
+      document.getElementById('valVisaoTotalRv').textContent = `R$ ${data.total_rv.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+      document.getElementById('valVisaoOpenPlans').textContent = data.open_plans_count;
+      document.getElementById('subVisaoTotalPlans').textContent = `${data.plans_count} planos criados no total`;
+      document.getElementById('badgeVisaoAtRisk').textContent = `${data.at_risk_collaborators.length} EM RISCO / FORA DA META`;
+
+      // Populate Competencia Selector
+      const sel = document.getElementById('selectCompetenciaVisao');
+      if (data.available_competencias && data.available_competencias.length > 0) {
+        sel.innerHTML = data.available_competencias.map(c => `<option value="${c}" ${c === data.competencia ? 'selected' : ''}>${c}</option>`).join('');
+      }
+
+      // Render Collaborators at Risk table
+      const tbodyAtRisk = document.getElementById('tbodyVisaoAtRisk');
+      if (!data.at_risk_collaborators || data.at_risk_collaborators.length === 0) {
+        tbodyAtRisk.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#059669; font-weight:700; padding: 1.5rem;">🎉 Todos os colaboradores atingiram a meta de performance (≥ 90%)!</td></tr>';
+      } else {
+        tbodyAtRisk.innerHTML = data.at_risk_collaborators.map(c => `
+          <tr>
+            <td><strong>${c.nome}</strong></td>
+            <td><span class="badge-status status-cinza">${c.cargo}</span></td>
+            <td><strong style="color: ${c.performance_pct < 75 ? '#DC2626' : '#D97706'}; font-size: 1rem;">${c.performance_pct}%</strong></td>
+            <td><span class="badge-status status-amarelo">${c.rating || 'Rating C'}</span></td>
+            <td>${c.devolucao_val}</td>
+            <td>${c.banco_horas_val}</td>
+            <td>
+              <button class="btn-primary" style="font-size:0.75rem; padding:0.3rem 0.6rem;" onclick="app.openNewActionPlanModal(${c.id}, '${c.nome.replace(/'/g, "\\'")}')">
+                🎯 Criar Plano de Ação
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      // Load registered Action Plans
+      this.loadActionPlans(data.competencia);
+    } catch (err) {
+      console.error('Error loading managerial overview:', err);
+    }
+  },
+
+  async loadActionPlans(competencia = null) {
+    try {
+      let url = '/api/admin/action-plans';
+      if (competencia) url += `?competencia=${encodeURIComponent(competencia)}`;
+
+      const res = await fetch(url, { headers: this.getAuthHeaders() });
+      if (!res.ok) return;
+
+      const plans = await res.json();
+      const tbody = document.getElementById('tbodyActionPlans');
+
+      if (!plans || plans.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding: 1.5rem;">Nenhum Plano de Ação registrado para esta competência.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = plans.map(p => {
+        const statusClass = p.status === 'Concluído' ? 'status-verde' : (p.status === 'Em Acompanhamento' ? 'status-amarelo' : 'status-vermelho');
+        return `
+          <tr>
+            <td><small>${p.created_at}</small></td>
+            <td><strong>${p.collaborator_name}</strong> <small style="color:var(--text-muted);">(${p.role})</small></td>
+            <td><small>${p.issue_description}</small></td>
+            <td><strong>${p.action_title}</strong></td>
+            <td><small>${p.corrective_measure}</small></td>
+            <td><span class="badge-status status-cinza">${p.deadline}</span></td>
+            <td><small>${p.responsible_name}</small></td>
+            <td><span class="badge-status ${statusClass}">${p.status}</span></td>
+            <td>
+              <select style="font-size:0.75rem; padding:0.2rem;" onchange="app.updateActionPlanStatus(${p.id}, this.value)">
+                <option value="Pendente" ${p.status === 'Pendente' ? 'selected' : ''}>⏳ Pendente</option>
+                <option value="Em Acompanhamento" ${p.status === 'Em Acompanhamento' ? 'selected' : ''}>🔍 Em Acompanhamento</option>
+                <option value="Concluído" ${p.status === 'Concluído' ? 'selected' : ''}>✅ Concluído</option>
+              </select>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    } catch (err) {
+      console.error('Error loading action plans:', err);
+    }
+  },
+
+  async openNewActionPlanModal(targetUserId = null, targetUserName = null) {
+    try {
+      const res = await fetch('/api/admin/collaborators', { headers: this.getAuthHeaders() });
+      if (!res.ok) return;
+
+      const users = await res.json();
+      const sel = document.getElementById('modalPlanUserId');
+      sel.innerHTML = users.map(u => `<option value="${u.id}" ${u.id === targetUserId ? 'selected' : ''}>${u.name} (${u.role})</option>`).join('');
+
+      document.getElementById('formActionPlan').reset();
+      document.getElementById('planModalMsg').style.display = 'none';
+      
+      const deadlineInput = document.getElementById('modalPlanDeadline');
+      const today = new Date();
+      today.setDate(today.getDate() + 15);
+      deadlineInput.value = today.toISOString().split('T')[0];
+
+      document.getElementById('modalActionPlan').style.display = 'flex';
+    } catch (err) {
+      console.error('Error opening action plan modal:', err);
+    }
+  },
+
+  closeActionPlanModal() {
+    document.getElementById('modalActionPlan').style.display = 'none';
+  },
+
+  async submitActionPlan(e) {
+    e.preventDefault();
+    const userId = parseInt(document.getElementById('modalPlanUserId').value);
+    const issue = document.getElementById('modalPlanIssue').value;
+    const title = document.getElementById('modalPlanTitle').value;
+    const measure = document.getElementById('modalPlanMeasure').value;
+    const deadline = document.getElementById('modalPlanDeadline').value;
+    const competencia = document.getElementById('selectCompetenciaVisao').value || 'Julho/2026';
+    const msgEl = document.getElementById('planModalMsg');
+
+    try {
+      const res = await fetch('/api/admin/action-plans', {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({
+          user_id: userId,
+          competencia: competencia,
+          issue_description: issue,
+          action_title: title,
+          corrective_measure: measure,
+          deadline: deadline
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Falha ao salvar Plano de Ação.');
+      }
+
+      msgEl.style.background = '#ECFDF5';
+      msgEl.style.color = '#065F46';
+      msgEl.textContent = 'Plano de Ação registrado com sucesso!';
+      msgEl.style.display = 'block';
+
+      setTimeout(() => {
+        this.closeActionPlanModal();
+        this.loadManagerialOverview(competencia);
+      }, 1000);
+    } catch (err) {
+      msgEl.style.background = '#FEE2E2';
+      msgEl.style.color = '#991B1B';
+      msgEl.textContent = err.message;
+      msgEl.style.display = 'block';
+    }
+  },
+
+  async updateActionPlanStatus(planId, statusVal) {
+    try {
+      const formData = new FormData();
+      formData.append('status_val', statusVal);
+
+      const res = await fetch(`/api/admin/action-plans/${planId}/status`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${this.token}` },
+        body: formData
+      });
+
+      if (res.ok) {
+        const competencia = document.getElementById('selectCompetenciaVisao').value || 'Julho/2026';
+        this.loadManagerialOverview(competencia);
+      }
+    } catch (err) {
+      console.error('Error updating action plan status:', err);
+    }
   },
 
   async loadAdminFeedbacks() {
