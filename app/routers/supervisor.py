@@ -15,7 +15,8 @@ def get_supervisor_dashboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["SUPERVISOR", "ADMIN"]))
 ):
-    target_comp = competencia or "Agosto/2026"
+    all_comps = [c[0] for c in db.query(PerformanceRecord.competencia).distinct().all() if c[0]]
+    target_comp = competencia if competencia else (all_comps[0] if all_comps else "Julho/2026")
 
     # Restrict scope: If Supervisor, fetch only subordinates assigned to supervisor
     if current_user.role == "SUPERVISOR":
@@ -48,22 +49,23 @@ def get_supervisor_dashboard(
             perf_pct = r.performance_pct
             rv_prev = r.rv_prevista
             rank_pos = r.ranking_pos
+            rating_val = getattr(r, 'rating', 'Rating B') or 'Rating B'
+            if perf_pct >= 90:
+                status_str = "VERDE"
+                dentro_meta += 1
+            elif perf_pct >= 75:
+                status_str = "AMARELO"
+                em_atencao += 1
+            else:
+                status_str = "VERMELHO"
+                fora_meta += 1
         else:
-            perf_pct = 85.0
-            rv_prev = 650.0
-            rank_pos = 10
+            perf_pct = 0.0
+            rv_prev = 0.0
+            rank_pos = 99
+            rating_val = "SEM DADOS"
+            status_str = "CINZA"
 
-        if perf_pct >= 90:
-            status_str = "VERDE"
-            dentro_meta += 1
-        elif perf_pct >= 75:
-            status_str = "AMARELO"
-            em_atencao += 1
-        else:
-            status_str = "VERMELHO"
-            fora_meta += 1
-
-        rating_val = getattr(r, 'rating', 'Rating B') if r else ('Rating A' if perf_pct >= 100 else ('Rating B' if perf_pct >= 90 else ('Rating C' if perf_pct >= 75 else 'Rating D')))
         team_items.append(
             TeamMemberItem(
                 id=sub.id,
