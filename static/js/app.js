@@ -1116,6 +1116,7 @@ const app = {
       const res = await fetch('/api/admin/collaborators', { headers: this.getAuthHeaders() });
       if (!res.ok) return;
       const users = await res.json();
+      this.currentAdminUsers = users;
 
       const tbody = document.getElementById('tbodyAdminUsers');
       tbody.innerHTML = users.map(u => `
@@ -1124,11 +1125,124 @@ const app = {
           <td><strong>${u.name}</strong></td>
           <td>${u.role}</td>
           <td><code>${u.masked_cpf}</code></td>
-          <td><span class="badge-status status-verde">${u.status}</span></td>
+          <td><span class="badge-status status-${(u.status === 'Ativo' ? 'verde' : 'vermelho')}">${u.status}</span></td>
+          <td>
+            <div style="display: flex; gap: 0.5rem;">
+              <button class="btn-primary" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;" onclick="app.openEditUserModal(${u.id})">✏️ Editar</button>
+              <button class="btn-logout" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; background: #FEF2F2; color: #DC2626; border: 1px solid #FCA5A5;" onclick="app.deleteCollaborator(${u.id}, '${u.name}')">❌ Desativar</button>
+            </div>
+          </td>
         </tr>
       `).join('');
     } catch (err) {
       console.error('Error loading admin collaborators:', err);
+    }
+  },
+
+  openCreateUserModal() {
+    document.getElementById('modalUserId').value = '';
+    document.getElementById('modalUserTitle').textContent = 'Cadastrar Novo Colaborador';
+    document.getElementById('modalUserNome').value = '';
+    document.getElementById('modalUserMatricula').value = '';
+    document.getElementById('modalUserCpf').value = '';
+    document.getElementById('modalUserRole').value = 'MOTORISTA';
+    document.getElementById('modalUserPassword').value = '123';
+    document.getElementById('modalUserStatus').value = 'Ativo';
+    document.getElementById('userModalMsg').style.display = 'none';
+
+    document.getElementById('modalCreateUser').classList.add('active');
+  },
+
+  openEditUserModal(userId) {
+    const list = this.currentAdminUsers || [];
+    const u = list.find(item => item.id === userId);
+    if (!u) return;
+
+    document.getElementById('modalUserId').value = u.id;
+    document.getElementById('modalUserTitle').textContent = `Editar Colaborador: ${u.name}`;
+    document.getElementById('modalUserNome').value = u.name;
+    document.getElementById('modalUserMatricula').value = u.matricula || '';
+    document.getElementById('modalUserCpf').value = u.masked_cpf || '';
+    document.getElementById('modalUserRole').value = u.role;
+    document.getElementById('modalUserPassword').value = '';
+    document.getElementById('modalUserStatus').value = u.status || 'Ativo';
+    document.getElementById('userModalMsg').style.display = 'none';
+
+    document.getElementById('modalCreateUser').classList.add('active');
+  },
+
+  closeCreateUserModal() {
+    document.getElementById('modalCreateUser').classList.remove('active');
+  },
+
+  async submitUserModal(e) {
+    e.preventDefault();
+    const userId = document.getElementById('modalUserId').value;
+    const nome = document.getElementById('modalUserNome').value.trim();
+    const matricula = document.getElementById('modalUserMatricula').value.trim();
+    const cpf = document.getElementById('modalUserCpf').value.trim();
+    const role = document.getElementById('modalUserRole').value;
+    const password = document.getElementById('modalUserPassword').value;
+    const statusVal = document.getElementById('modalUserStatus').value;
+
+    const msgEl = document.getElementById('userModalMsg');
+    const btn = document.getElementById('btnSubmitUserModal');
+    btn.disabled = true;
+
+    try {
+      const isEdit = !!userId;
+      const url = isEdit ? `/api/admin/collaborators/${userId}` : '/api/admin/collaborators';
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const body = {
+        name: nome,
+        matricula: matricula,
+        role: role,
+        status: statusVal
+      };
+      if (cpf && !cpf.includes('*')) body.cpf = cpf;
+      if (password) body.password = password;
+
+      const res = await fetch(url, {
+        method: method,
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(body)
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Erro ao salvar colaborador.');
+
+      alert(`✅ Colaborador ${isEdit ? 'atualizado' : 'cadastrado'} com sucesso!`);
+      this.closeCreateUserModal();
+      this.loadAdminCollaborators();
+
+    } catch (err) {
+      msgEl.style.display = 'block';
+      msgEl.style.background = '#FEF2F2';
+      msgEl.style.color = '#991B1B';
+      msgEl.textContent = err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  },
+
+  async deleteCollaborator(userId, userName) {
+    if (!confirm(`Deseja realmente desativar o colaborador ${userName}?`)) return;
+
+    try {
+      const res = await fetch(`/api/admin/collaborators/${userId}`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders()
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Erro ao desativar colaborador.');
+
+      alert(`✅ Colaborador desativado com sucesso!`);
+      this.loadAdminCollaborators();
+
+    } catch (err) {
+      alert(`Erro: ${err.message}`);
     }
   },
 
