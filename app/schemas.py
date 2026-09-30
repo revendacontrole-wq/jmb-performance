@@ -24,6 +24,25 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     user: UserProfileResponse
 
+class UserCreateRequest(BaseModel):
+    name: str
+    matricula: str
+    cpf: str
+    role: str  # 'MOTORISTA', 'AJUDANTE', 'SUPERVISOR', 'ADMIN'
+    password: Optional[str] = "123"
+    supervisor_id: Optional[int] = None
+    status: Optional[str] = "Ativo"
+
+class UserUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    matricula: Optional[str] = None
+    cpf: Optional[str] = None
+    role: Optional[str] = None
+    password: Optional[str] = None
+    supervisor_id: Optional[int] = None
+    status: Optional[str] = None
+
+
 # --- Indicator Summary ---
 class IndicatorItem(BaseModel):
     key: str
