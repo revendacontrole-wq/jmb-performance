@@ -4,7 +4,7 @@ from typing import Optional, List
 import json
 
 from app.database import get_db
-from app.models import User, PerformanceRecord, ImportHistory, ActionPlan
+from app.models import User, PerformanceRecord, ImportHistory, ActionPlan, ExtraIndicatorRecord
 from app.schemas import (
     PreviewResponse,
     ConfirmImportRequest,
@@ -214,6 +214,17 @@ def get_managerial_overview(
     avg_perf = round(sum(r.performance_pct for r in records) / total_collabs, 1) if total_collabs > 0 else 0.0
     total_rv = round(sum(r.rv_prevista for r in records), 2)
     
+    avg_devolucao = round(sum(r.devolucao_val or 0.0 for r in records) / total_collabs, 2) if total_collabs > 0 else 0.0
+    avg_raio = round(sum(r.aderencia_raio_val or 100.0 for r in records) / total_collabs, 1) if total_collabs > 0 else 100.0
+    total_he_cost = round(sum(r.banco_horas_he_cost or 0.0 for r in records), 2)
+    total_caixas = round(sum(r.caixas_val or 0.0 for r in records), 1)
+
+    # Extra Indicators aggregated
+    extra_recs = db.query(ExtraIndicatorRecord).filter(ExtraIndicatorRecord.competencia == target_comp).all()
+    total_mapas = sum(e.mapas or 0 for e in extra_recs)
+    total_entregas = sum(e.entregas or 0 for e in extra_recs)
+    avg_reposicao_pct = round(sum(e.reposicao_pct or 0.0 for e in extra_recs) / len(extra_recs), 1) if extra_recs else 0.0
+
     dentro_meta = sum(1 for r in records if r.performance_pct >= 90)
     em_atencao = sum(1 for r in records if 75 <= r.performance_pct < 90)
     fora_meta = sum(1 for r in records if r.performance_pct < 75)
@@ -221,34 +232,33 @@ def get_managerial_overview(
     plans_count = db.query(ActionPlan).filter(ActionPlan.competencia == target_comp).count()
     open_plans_count = db.query(ActionPlan).filter(ActionPlan.competencia == target_comp, ActionPlan.status != "Concluído").count()
 
-    top_performers = []
-    sorted_recs = sorted(records, key=lambda x: x.performance_pct, reverse=True)
-    for r in sorted_recs[:5]:
+    # Full Collaborator Table for Managerial Overview (Consolidando todos os 10+ indicadores)
+    extra_by_user = {e.user_id: e for e in extra_recs}
+    all_collabs_detail = []
+    
+    for r in sorted(records, key=lambda x: x.ranking_pos or 999):
         u = db.query(User).filter(User.id == r.user_id).first()
-        top_performers.append({
+        ex = extra_by_user.get(r.user_id)
+        all_collabs_detail.append({
             "id": r.user_id,
             "nome": u.name if u else "Colaborador",
-            "cargo": r.cargo,
+            "matricula": u.matricula if u else "-",
+            "role": r.cargo,
             "performance_pct": r.performance_pct,
+            "rating": r.rating or "Rating B",
             "rv_prevista": r.rv_prevista,
-            "rating": r.rating
+            "caixas_val": r.caixas_val or 0.0,
+            "devolucao_val": f"{(r.devolucao_val or 0.0):.2f}%",
+            "aderencia_raio_val": f"{(r.aderencia_raio_val or 100.0):.1f}%",
+            "banco_horas_val": r.banco_horas_val or "00:00",
+            "he_cost": r.banco_horas_he_cost or 0.0,
+            "mapas": ex.mapas if ex else 0,
+            "entregas": ex.entregas if ex else 0,
+            "reposicao_pct": f"{(ex.reposicao_pct if ex else 0.0):.1f}%",
+            "status": "VERDE" if r.performance_pct >= 90 else ("AMARELO" if r.performance_pct >= 75 else "VERMELHO")
         })
 
-    at_risk = []
-    risk_recs = [r for r in records if r.performance_pct < 90]
-    for r in sorted(risk_recs, key=lambda x: x.performance_pct):
-        u = db.query(User).filter(User.id == r.user_id).first()
-        at_risk.append({
-            "id": r.user_id,
-            "nome": u.name if u else "Colaborador",
-            "cargo": r.cargo,
-            "performance_pct": r.performance_pct,
-            "rv_prevista": r.rv_prevista,
-            "rating": r.rating,
-            "status": "VERMELHO" if r.performance_pct < 75 else "AMARELO",
-            "devolucao_val": f"{r.devolucao_val:.2f}%",
-            "banco_horas_val": r.banco_horas_val
-        })
+    at_risk = [c for c in all_collabs_detail if c["performance_pct"] < 90]
 
     return {
         "admin_name": current_user.name,
@@ -257,13 +267,20 @@ def get_managerial_overview(
         "total_collabs": total_collabs,
         "avg_perf": avg_perf,
         "total_rv": total_rv,
+        "avg_devolucao": avg_devolucao,
+        "avg_raio": avg_raio,
+        "total_he_cost": total_he_cost,
+        "total_caixas": total_caixas,
+        "total_mapas": total_mapas,
+        "total_entregas": total_entregas,
+        "avg_reposicao_pct": avg_reposicao_pct,
         "dentro_meta": dentro_meta,
         "em_atencao": em_atencao,
         "fora_meta": fora_meta,
         "plans_count": plans_count,
         "open_plans_count": open_plans_count,
-        "top_performers": top_performers,
-        "at_risk_collaborators": at_risk
+        "at_risk_collaborators": at_risk,
+        "all_collaborators": all_collabs_detail
     }
 
 @router.get("/action-plans", response_model=List[ActionPlanItem])
