@@ -180,13 +180,24 @@ def parse_excel_file(contents: bytes, filename: str, competencia_input: str) -> 
         # Map date columns in row 6
         row_dates = df_mc.iloc[6]
         for c_idx, val in enumerate(row_dates):
-            if pd.notnull(val) and ("2026-" in str(val) or "202" in str(val)):
-                dt_str = str(val)[:10]
-                try:
-                    d_num = int(dt_str.split("-")[2])
-                except Exception:
-                    d_num = len(mot_date_cols) + 1
-                mot_date_cols.append((c_idx, dt_str, d_num))
+            if pd.notnull(val):
+                parsed_dt = None
+                if isinstance(val, (pd.Timestamp, openpyxl.worksheet._reader.Cell if False else object)) or hasattr(val, "strftime"):
+                    try:
+                        parsed_dt = pd.to_datetime(val)
+                    except Exception:
+                        pass
+                if parsed_dt is None:
+                    v_str = str(val).strip()
+                    if len(v_str) >= 8 and any(y in v_str for y in ["2024", "2025", "2026", "2027"]):
+                        try:
+                            parsed_dt = pd.to_datetime(v_str)
+                        except Exception:
+                            pass
+                if parsed_dt is not None and not pd.isnull(parsed_dt):
+                    dt_str = parsed_dt.strftime("%Y-%m-%d")
+                    d_num = parsed_dt.day
+                    mot_date_cols.append((c_idx, dt_str, d_num))
 
         for idx in range(7, len(df_mc)):
             row = df_mc.iloc[idx]
@@ -296,13 +307,24 @@ def parse_excel_file(contents: bytes, filename: str, competencia_input: str) -> 
         # Map date columns in row 6
         row_dates = df_ac.iloc[6]
         for c_idx, val in enumerate(row_dates):
-            if pd.notnull(val) and ("2026-" in str(val) or "202" in str(val)):
-                dt_str = str(val)[:10]
-                try:
-                    d_num = int(dt_str.split("-")[2])
-                except Exception:
-                    d_num = len(aju_date_cols) + 1
-                aju_date_cols.append((c_idx, dt_str, d_num))
+            if pd.notnull(val):
+                parsed_dt = None
+                if isinstance(val, (pd.Timestamp, openpyxl.worksheet._reader.Cell if False else object)) or hasattr(val, "strftime"):
+                    try:
+                        parsed_dt = pd.to_datetime(val)
+                    except Exception:
+                        pass
+                if parsed_dt is None:
+                    v_str = str(val).strip()
+                    if len(v_str) >= 8 and any(y in v_str for y in ["2024", "2025", "2026", "2027"]):
+                        try:
+                            parsed_dt = pd.to_datetime(v_str)
+                        except Exception:
+                            pass
+                if parsed_dt is not None and not pd.isnull(parsed_dt):
+                    dt_str = parsed_dt.strftime("%Y-%m-%d")
+                    d_num = parsed_dt.day
+                    aju_date_cols.append((c_idx, dt_str, d_num))
 
         for idx in range(7, len(df_ac)):
             row = df_ac.iloc[idx]
