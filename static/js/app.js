@@ -844,6 +844,14 @@ const app = {
       document.getElementById('subVisaoTotalPlans').textContent = `${data.plans_count} planos criados no total`;
       document.getElementById('badgeVisaoAtRisk').textContent = `${data.at_risk_collaborators.length} EM RISCO / FORA DA META`;
 
+      // Operational KPI Cards
+      document.getElementById('valVisaoAvgDevolucao').textContent = `${(data.avg_devolucao || 0.0).toFixed(2)}%`;
+      document.getElementById('valVisaoAvgRaio').textContent = `${(data.avg_raio || 100.0).toFixed(1)}%`;
+      document.getElementById('valVisaoTotalCaixas').textContent = `${(data.total_caixas || 0.0).toLocaleString('pt-BR')} cx`;
+      document.getElementById('valVisaoTotalMapas').textContent = (data.total_mapas || 0).toLocaleString('pt-BR');
+      document.getElementById('valVisaoTotalEntregas').textContent = (data.total_entregas || 0).toLocaleString('pt-BR');
+      document.getElementById('valVisaoAvgReposicao').textContent = `${(data.avg_reposicao_pct || 0.0).toFixed(1)}%`;
+
       // Populate Competencia Selector
       const sel = document.getElementById('selectCompetenciaVisao');
       if (data.available_competencias && data.available_competencias.length > 0) {
@@ -858,7 +866,7 @@ const app = {
         tbodyAtRisk.innerHTML = data.at_risk_collaborators.map(c => `
           <tr>
             <td><strong>${c.nome}</strong></td>
-            <td><span class="badge-status status-cinza">${c.cargo}</span></td>
+            <td><span class="badge-status status-cinza">${c.role}</span></td>
             <td><strong style="color: ${c.performance_pct < 75 ? '#DC2626' : '#D97706'}; font-size: 1rem;">${c.performance_pct}%</strong></td>
             <td><span class="badge-status status-amarelo">${c.rating || 'Rating C'}</span></td>
             <td>${c.devolucao_val}</td>
@@ -870,6 +878,38 @@ const app = {
             </td>
           </tr>
         `).join('');
+      }
+
+      // Render Full Collaborators Matrix table
+      const tbodyAll = document.getElementById('tbodyVisaoAllCollabs');
+      document.getElementById('badgeVisaoTotalCount').textContent = `${(data.all_collaborators || []).length} COLABORADORES`;
+      if (!data.all_collaborators || data.all_collaborators.length === 0) {
+        tbodyAll.innerHTML = '<tr><td colspan="13" style="text-align:center; color:var(--text-muted); padding: 1.5rem;">Nenhum colaborador encontrado nesta competência.</td></tr>';
+      } else {
+        tbodyAll.innerHTML = data.all_collaborators.map(c => {
+          const perfColor = c.performance_pct >= 90 ? '#059669' : (c.performance_pct >= 75 ? '#D97706' : '#DC2626');
+          return `
+            <tr>
+              <td><strong>${c.nome}</strong></td>
+              <td><span class="badge-status status-cinza">${c.role}</span></td>
+              <td><strong style="color: ${perfColor}; font-size: 0.95rem;">${c.performance_pct}%</strong></td>
+              <td><span class="badge-status status-verde">${c.rating}</span></td>
+              <td>R$ ${c.rv_prevista.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td>
+              <td>${c.caixas_val.toLocaleString('pt-BR')} cx</td>
+              <td>${c.devolucao_val}</td>
+              <td>${c.aderencia_raio_val}</td>
+              <td>${c.banco_horas_val}</td>
+              <td>${c.mapas}</td>
+              <td>${c.entregas}</td>
+              <td>${c.reposicao_pct}</td>
+              <td>
+                <button class="btn-primary" style="font-size:0.7rem; padding:0.25rem 0.5rem;" onclick="app.openNewActionPlanModal(${c.id}, '${c.nome.replace(/'/g, "\\'")}')">
+                  + Plano
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
       }
 
       // Load registered Action Plans
