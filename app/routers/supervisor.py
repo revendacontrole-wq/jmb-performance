@@ -18,15 +18,8 @@ def get_supervisor_dashboard(
     all_comps = [c[0] for c in db.query(PerformanceRecord.competencia).distinct().all() if c[0]]
     target_comp = competencia if competencia else (all_comps[0] if all_comps else "Julho/2026")
 
-    # Restrict scope: If Supervisor, fetch only subordinates assigned to supervisor
-    if current_user.role == "SUPERVISOR":
-        subordinates = db.query(User).filter(User.supervisor_id == current_user.id).all()
-        if not subordinates:
-            # Fallback for demonstration: fetch all Motoristas and Ajudantes
-            subordinates = db.query(User).filter(User.role.in_(["MOTORISTA", "AJUDANTE"])).all()
-    else:
-        # Admin can view all collaborators
-        subordinates = db.query(User).filter(User.role.in_(["MOTORISTA", "AJUDANTE"])).all()
+    # Fetch all Motoristas and Ajudantes for complete team vision
+    subordinates = db.query(User).filter(User.role.in_(["MOTORISTA", "AJUDANTE"])).order_by(User.name.asc()).all()
 
     sub_ids = [u.id for u in subordinates]
 
