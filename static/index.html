@@ -431,6 +431,34 @@
           </div>
         </div>
 
+        <!-- Operational Indicators KPI Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
+          <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1rem; text-align: center;">
+            <span style="font-size: 1.3rem; font-weight: 800; color: #0F172A;" id="valVisaoAvgDevolucao">0.00%</span>
+            <label style="display: block; font-size: 0.75rem; color: #64748B; margin-top: 0.2rem; font-weight: 600;">% DEVOLUÇÃO MÉDIA</label>
+          </div>
+          <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1rem; text-align: center;">
+            <span style="font-size: 1.3rem; font-weight: 800; color: #0F172A;" id="valVisaoAvgRaio">0.0%</span>
+            <label style="display: block; font-size: 0.75rem; color: #64748B; margin-top: 0.2rem; font-weight: 600;">% ADERÊNCIA AO RAIO</label>
+          </div>
+          <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1rem; text-align: center;">
+            <span style="font-size: 1.3rem; font-weight: 800; color: #0F172A;" id="valVisaoTotalCaixas">0 cx</span>
+            <label style="display: block; font-size: 0.75rem; color: #64748B; margin-top: 0.2rem; font-weight: 600;">TOTAL CAIXAS ENTREGUES</label>
+          </div>
+          <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1rem; text-align: center;">
+            <span style="font-size: 1.3rem; font-weight: 800; color: #0F172A;" id="valVisaoTotalMapas">0</span>
+            <label style="display: block; font-size: 0.75rem; color: #64748B; margin-top: 0.2rem; font-weight: 600;">TOTAL MAPAS EXECUTADOS</label>
+          </div>
+          <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1rem; text-align: center;">
+            <span style="font-size: 1.3rem; font-weight: 800; color: #0F172A;" id="valVisaoTotalEntregas">0</span>
+            <label style="display: block; font-size: 0.75rem; color: #64748B; margin-top: 0.2rem; font-weight: 600;">ENTREGAS REALIZADAS</label>
+          </div>
+          <div style="background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 12px; padding: 1rem; text-align: center;">
+            <span style="font-size: 1.3rem; font-weight: 800; color: #92400E;" id="valVisaoAvgReposicao">0.0%</span>
+            <label style="display: block; font-size: 0.75rem; color: #78350F; margin-top: 0.2rem; font-weight: 700;">% REPOSIÇÃO MÉDIA</label>
+          </div>
+        </div>
+
         <!-- Collaborators at Risk & Action Plan Creation -->
         <div class="card" style="margin-bottom: 2rem; border-left: 5px solid #EF4444;">
           <div class="section-title">
@@ -455,6 +483,42 @@
                 </tr>
               </thead>
               <tbody id="tbodyVisaoAtRisk">
+                <!-- Rendered via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Matriz Consolidada de Todos os Indicadores por Colaborador -->
+        <div class="card" style="margin-bottom: 2rem;">
+          <div class="section-title">
+            <span>📊 VISÃO CONSOLIDADA DE TODOS OS INDICADORES POR COLABORADOR</span>
+            <span class="badge-status status-verde" id="badgeVisaoTotalCount">0 COLABORADORES</span>
+          </div>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.25rem;">
+            Matriz completa de indicadores individuais: Performance Geral, Rating, RV Prevista, Caixas, Devolução, Raio, Banco de Horas, Mapas, Entregas e % Reposição.
+          </p>
+
+          <div class="table-responsive">
+            <table class="custom-table">
+              <thead>
+                <tr>
+                  <th>Colaborador</th>
+                  <th>Cargo</th>
+                  <th>Perf. (%)</th>
+                  <th>Rating</th>
+                  <th>RV Prevista</th>
+                  <th>Caixas</th>
+                  <th>Devolução</th>
+                  <th>Ader. Raio</th>
+                  <th>Banco Horas</th>
+                  <th>Mapas</th>
+                  <th>Entregas</th>
+                  <th>% Reposição</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyVisaoAllCollabs">
                 <!-- Rendered via JS -->
               </tbody>
             </table>
