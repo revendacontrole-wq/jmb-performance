@@ -12,6 +12,7 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 class LoginRequest(BaseModel):
     cpf: Optional[str] = ""
     email: Optional[str] = ""
+    login: Optional[str] = ""
     password: str = ""
 
 class LoginResponse(BaseModel):
@@ -21,7 +22,7 @@ class LoginResponse(BaseModel):
 
 @router.post("/login", response_model=LoginResponse)
 def login(data: LoginRequest, db: Session = Depends(get_db)):
-    raw_input = (data.cpf or data.email or "").strip()
+    raw_input = (data.cpf or data.email or data.login or "").strip()
     input_cleaned = clean_cpf(raw_input)
 
     user = None
