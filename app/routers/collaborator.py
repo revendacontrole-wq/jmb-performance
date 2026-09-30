@@ -22,35 +22,53 @@ def get_collaborator_dashboard(
 ):
     # Fetch all stored competencies in system (newest first)
     all_comp_recs = db.query(PerformanceRecord.competencia).distinct().all()
-    system_comps = [c[0] for c in all_comp_recs if c[0]]
+    available_competencias = [c[0] for c in all_comp_recs if c[0]]
     
-    if not system_comps:
-        system_comps = ["Setembro/2026", "Agosto/2026", "Julho/2026"]
-    else:
-        # Sort system_comps so Setembro/2026, Agosto/2026 come first
-        def comp_sort_key(c_str):
-            m_num, year = get_month_year_from_competencia(c_str)
-            return f"{year}{m_num}"
-        system_comps.sort(key=comp_sort_key, reverse=True)
+    def comp_sort_key(c_str):
+        m_num, year = get_month_year_from_competencia(c_str)
+        return f"{year}{m_num}"
+    available_competencias.sort(key=comp_sort_key, reverse=True)
 
-    available_competencias = list(dict.fromkeys(system_comps))
-    target_comp = competencia or available_competencias[0]
+    if competencia and competencia in available_competencias:
+        target_comp = competencia
+    elif available_competencias:
+        target_comp = available_competencias[0]
+    else:
+        target_comp = competencia or "Julho/2026"
 
     # Fetch user's performance record for the target competence
     user_records = db.query(PerformanceRecord).filter(PerformanceRecord.user_id == current_user.id).all()
     perf = next((r for r in user_records if r.competencia == target_comp), None)
 
     if not perf:
-        perf = PerformanceRecord(
-            user_id=current_user.id,
-            matricula=current_user.matricula or "000",
+        indicators = [
+            IndicatorItem(key="devolucao", label="Devolução", current_val="0.00%", meta_val="≤ 2.00%", pct=0.0, status="CINZA", impact_note="Sem dados importados"),
+            IndicatorItem(key="aderencia_raio", label="Aderência ao Raio", current_val="0.0%", meta_val="≥ 100%", pct=0.0, status="CINZA", impact_note="Sem dados importados"),
+            IndicatorItem(key="banco_horas", label="Banco de Horas", current_val="00:00", meta_val="≤ 20:00", pct=0.0, status="CINZA", impact_note="Sem dados importados"),
+            IndicatorItem(key="jornada", label="Jornada", current_val="-", meta_val="Conforme", pct=0.0, status="CINZA", impact_note="Sem dados importados"),
+            IndicatorItem(key="caixas", label="Caixas Entregues", current_val="0 cx", meta_val="1000 cx", pct=0.0, status="CINZA", impact_note="Sem dados importados"),
+            IndicatorItem(key="ponto", label="Batida de Ponto", current_val="-", meta_val="-", pct=0.0, status="CINZA", impact_note="Sem dados importados")
+        ]
+        breakdown = ResultBreakdown(
+            dentro_meta=[],
+            fora_meta=[],
+            fatores_reducao=["Nenhuma planilha importada para esta competência."],
+            potencial_restante=0.0,
+            rv_prevista=0.0,
+            rv_maxima=0.0
+        )
+        return CollaboratorDashboardResponse(
+            name=current_user.name,
             competencia=target_comp,
-            cargo=current_user.role,
-            performance_pct=90.0,
-            rv_prevista=750.0 if current_user.role == "MOTORISTA" else 600.0,
-            rv_maxima=1000.0 if current_user.role == "MOTORISTA" else 800.0,
-            ranking_pos=1,
-            ranking_total=1
+            performance_pct=0.0,
+            rating="SEM DADOS",
+            rv_prevista=0.0,
+            rv_maxima=0.0,
+            ranking_pos=0,
+            ranking_total=0,
+            indicators=indicators,
+            breakdown=breakdown,
+            available_competencias=available_competencias or [target_comp]
         )
 
     # Build 6 Indicator Items
@@ -200,7 +218,9 @@ def get_collaborator_daily(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["MOTORISTA", "AJUDANTE", "SUPERVISOR", "ADMIN"]))
 ):
-    comp_target = competencia or "Julho/2026"
+    all_comp_recs = db.query(PerformanceRecord.competencia).distinct().all()
+    available_comps = [c[0] for c in all_comp_recs if c[0]]
+    comp_target = competencia or (available_comps[0] if available_comps else "Julho/2026")
     records = db.query(DailyPerformanceRecord).filter(
         DailyPerformanceRecord.user_id == current_user.id,
         DailyPerformanceRecord.competencia == comp_target
@@ -264,15 +284,7 @@ def get_collaborator_history(
     records = db.query(PerformanceRecord).filter(PerformanceRecord.user_id == current_user.id).order_by(PerformanceRecord.created_at.asc()).all()
     
     if not records:
-        return [
-            HistoryItem(
-                competencia="Julho/2026",
-                performance_pct=94.0,
-                rv_prevista=842.50,
-                ranking_pos=6,
-                status_geral="VERDE"
-            )
-        ]
+        return []
 
     history = []
     for r in records:
@@ -294,7 +306,10 @@ def get_collaborator_extra_indicators(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(["MOTORISTA", "AJUDANTE", "SUPERVISOR", "ADMIN"]))
 ):
-    target_comp = competencia or "Setembro/2026"
+    all_comp_recs = db.query(PerformanceRecord.competencia).distinct().all()
+    available_comps = [c[0] for c in all_comp_recs if c[0]]
+    target_comp = competencia or (available_comps[0] if available_comps else "Julho/2026")
+
     ex_rec = db.query(ExtraIndicatorRecord).filter(
         ExtraIndicatorRecord.user_id == current_user.id,
         ExtraIndicatorRecord.competencia == target_comp
@@ -309,9 +324,9 @@ def get_collaborator_extra_indicators(
             "caixas": 0.0,
             "reposicao_qtd": 0.0,
             "reposicao_pct": 0.0,
-            "reposicao_status": "VERDE",
-            "rating": "Rating B",
-            "disp_tempo": "100%"
+            "reposicao_status": "CINZA",
+            "rating": "SEM DADOS",
+            "disp_tempo": "-"
         }
 
     rep_status = "VERDE" if ex_rec.reposicao_pct <= 5.0 else ("AMARELO" if ex_rec.reposicao_pct <= 10.0 else "VERMELHO")
