@@ -563,7 +563,10 @@
       <!-- TAB: COLABORADORES -->
       <div id="tabAdminColaboradores" style="display: none;">
         <div class="card">
-          <div class="section-title">Cadastro Geral de Colaboradores</div>
+          <div class="section-title" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <span>Cadastro Geral de Colaboradores</span>
+            <button class="btn-primary" style="font-size: 0.85rem; padding: 0.5rem 1rem;" onclick="app.openCreateUserModal()">+ CADASTRAR NOVO COLABORADOR</button>
+          </div>
           <div class="table-responsive">
             <table class="custom-table">
               <thead>
@@ -573,6 +576,7 @@
                   <th>Cargo</th>
                   <th>CPF (Mascarado)</th>
                   <th>Status</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody id="tbodyAdminUsers">
@@ -710,6 +714,65 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=16"></script>
+  <!-- MODAL 4: CADASTRAR / EDITAR COLABORADOR -->
+  <div class="modal-overlay" id="modalCreateUser">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalUserTitle">Cadastrar Novo Colaborador</h3>
+        <button class="btn-close-modal" onclick="app.closeCreateUserModal()">&times;</button>
+      </div>
+
+      <form id="formUserModal" onsubmit="app.submitUserModal(event)">
+        <input type="hidden" id="modalUserId">
+
+        <div class="form-group" style="margin-bottom: 0.85rem;">
+          <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:0.3rem;">Nome Completo:</label>
+          <input type="text" id="modalUserNome" class="form-input" required placeholder="Ex: João da Silva">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0.85rem;">
+          <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:0.3rem;">Matrícula / Código:</label>
+          <input type="text" id="modalUserMatricula" class="form-input" required placeholder="Ex: 045">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0.85rem;">
+          <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:0.3rem;">CPF (apenas números ou formatado):</label>
+          <input type="text" id="modalUserCpf" class="form-input" required placeholder="000.000.000-00">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0.85rem;">
+          <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:0.3rem;">Cargo / Função:</label>
+          <select id="modalUserRole" class="form-input">
+            <option value="MOTORISTA">MOTORISTA</option>
+            <option value="AJUDANTE">AJUDANTE</option>
+            <option value="SUPERVISOR">SUPERVISOR</option>
+            <option value="ADMIN">ADMINISTRADOR</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0.85rem;">
+          <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:0.3rem;">Senha de Acesso:</label>
+          <input type="text" id="modalUserPassword" class="form-input" placeholder="Padrão: 123">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label style="display:block; font-size:0.85rem; font-weight:700; margin-bottom:0.3rem;">Status:</label>
+          <select id="modalUserStatus" class="form-input">
+            <option value="Ativo">Ativo</option>
+            <option value="Inativo">Inativo</option>
+          </select>
+        </div>
+
+        <div id="userModalMsg" style="display: none; padding: 0.5rem; border-radius: 6px; font-size: 0.85rem; margin-bottom: 1rem;"></div>
+
+        <div style="display: flex; gap: 1rem;">
+          <button type="button" class="btn-logout" style="flex: 1; padding: 0.85rem;" onclick="app.closeCreateUserModal()">CANCELAR</button>
+          <button type="submit" class="btn-primary" style="flex: 2;" id="btnSubmitUserModal">SALVAR COLABORADOR</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js?v=17"></script>
 </body>
 </html>
