@@ -183,3 +183,20 @@ class ExtraIndicatorRecord(Base):
 
     user = relationship("User", back_populates="extra_indicators")
 
+
+class ActionPlan(Base):
+    __tablename__ = "action_plans"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    collaborator_name = Column(String, nullable=False)
+    role = Column(String, nullable=False)
+    competencia = Column(String, nullable=False)
+    issue_description = Column(Text, nullable=False)
+    action_title = Column(String, nullable=False)
+    corrective_measure = Column(Text, nullable=False)
+    deadline = Column(String, nullable=False)
+    responsible_name = Column(String, nullable=False)
+    status = Column(String, default="Pendente")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
