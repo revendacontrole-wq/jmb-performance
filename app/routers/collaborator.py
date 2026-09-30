@@ -58,46 +58,46 @@ def get_collaborator_dashboard(
         IndicatorItem(
             key="devolucao",
             label="Devolução",
-            current_val=f"{perf.devolucao_val:.2f}%",
-            meta_val=f"≤ {perf.devolucao_meta:.2f}%",
-            pct=perf.devolucao_pct,
-            status=perf.devolucao_status,
+            current_val=f"{(perf.devolucao_val or 0.0):.2f}%",
+            meta_val=f"≤ {(perf.devolucao_meta or 2.0):.2f}%",
+            pct=perf.devolucao_pct or 0.0,
+            status=perf.devolucao_status or "VERDE",
             impact_note="Premiação R$ 70,00 mantida" if perf.devolucao_status == "VERDE" else "Devolução acima da meta reduziu bônus"
         ),
         IndicatorItem(
             key="aderencia_raio",
             label="Aderência ao Raio",
-            current_val=f"{perf.aderencia_raio_val:.1f}%",
-            meta_val=f"≥ {perf.aderencia_raio_meta:.0f}%",
-            pct=perf.aderencia_raio_pct,
-            status=perf.aderencia_raio_status,
+            current_val=f"{(perf.aderencia_raio_val or 0.0):.1f}%",
+            meta_val=f"≥ {(perf.aderencia_raio_meta or 100.0):.0f}%",
+            pct=perf.aderencia_raio_pct or 0.0,
+            status=perf.aderencia_raio_status or "VERDE",
             impact_note="Superou meta de geolocalização" if perf.aderencia_raio_status == "VERDE" else "Abaixo do raio de entregas"
         ),
         IndicatorItem(
             key="banco_horas",
             label="Banco de Horas",
             current_val=format_excel_time(perf.banco_horas_val),
-            meta_val=f"≤ {perf.banco_horas_meta}",
+            meta_val=f"≤ {perf.banco_horas_meta or '20:00'}",
             pct=100.0 if perf.banco_horas_status == "VERDE" else 75.0,
-            status=perf.banco_horas_status,
-            impact_note="Sem descontos de HE" if perf.banco_horas_he_cost == 0 else f"Desconto HE: R$ {perf.banco_horas_he_cost:.2f}"
+            status=perf.banco_horas_status or "VERDE",
+            impact_note="Sem descontos de HE" if (perf.banco_horas_he_cost or 0) == 0 else f"Desconto HE: R$ {(perf.banco_horas_he_cost or 0.0):.2f}"
         ),
         IndicatorItem(
             key="jornada",
             label="Jornada",
-            current_val=perf.jornada_val,
-            meta_val=perf.jornada_meta,
-            pct=perf.jornada_pct,
-            status=perf.jornada_status,
+            current_val=perf.jornada_val or "Conforme",
+            meta_val=perf.jornada_meta or "Conforme",
+            pct=perf.jornada_pct or 100.0,
+            status=perf.jornada_status or "VERDE",
             impact_note="Jornada dentro da janela limite"
         ),
         IndicatorItem(
             key="caixas",
             label="Caixas Entregues",
-            current_val=f"{perf.caixas_val:.0f} cx",
-            meta_val=f"{perf.caixas_meta:.0f} cx",
-            pct=perf.caixas_pct,
-            status=perf.caixas_status,
+            current_val=f"{(perf.caixas_val or 0.0):.0f} cx",
+            meta_val=f"{(perf.caixas_meta or 1000.0):.0f} cx",
+            pct=perf.caixas_pct or 0.0,
+            status=perf.caixas_status or "VERDE",
             impact_note="Volume de entrega computado na RV Bruta"
         ),
         IndicatorItem(
