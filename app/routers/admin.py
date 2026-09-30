@@ -10,9 +10,11 @@ from app.schemas import (
     ConfirmImportRequest,
     ImportConfirmResponse,
     ImportHistoryItem,
-    UserSummary
+    UserSummary,
+    UserCreateRequest,
+    UserUpdateRequest
 )
-from app.auth import get_current_user, require_role, mask_cpf
+from app.auth import get_current_user, require_role, mask_cpf, clean_cpf, hash_password
 from app.excel_engine import parse_excel_file, execute_import_confirm
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
@@ -88,9 +90,9 @@ def get_import_history(
 @router.get("/collaborators", response_model=List[UserSummary])
 def get_admin_collaborators(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_role(["ADMIN"]))
+    current_user: User = Depends(require_role(["ADMIN", "SUPERVISOR"]))
 ):
-    users = db.query(User).filter(User.role.in_(["MOTORISTA", "AJUDANTE"])).order_by(User.name.asc()).all()
+    users = db.query(User).filter(User.role.in_(["MOTORISTA", "AJUDANTE", "SUPERVISOR"])).order_by(User.name.asc()).all()
     out = []
     for u in users:
         out.append(
@@ -104,3 +106,93 @@ def get_admin_collaborators(
             )
         )
     return out
+
+@router.post("/collaborators", response_model=UserSummary)
+def create_collaborator(
+    data: UserCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["ADMIN", "SUPERVISOR"]))
+):
+    c_cpf = clean_cpf(data.cpf)
+    if not c_cpf or len(c_cpf) < 11:
+        raise HTTPException(status_code=400, detail="CPF inválido. Por favor insira 11 dígitos numéricos.")
+
+    existing_cpf = db.query(User).filter(User.cpf == c_cpf).first()
+    if existing_cpf:
+        raise HTTPException(status_code=400, detail=f"Já existe um colaborador cadastrado com o CPF {data.cpf}.")
+
+    pass_hash = hash_password(data.password or "123")
+    user = User(
+        name=data.name.strip(),
+        matricula=data.matricula.strip(),
+        cpf=c_cpf,
+        role=data.role.upper(),
+        password_hash=pass_hash,
+        supervisor_id=data.supervisor_id,
+        status=data.status or "Ativo"
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return UserSummary(
+        id=user.id,
+        matricula=user.matricula or "-",
+        name=user.name,
+        role=user.role,
+        masked_cpf=mask_cpf(user.cpf),
+        status=user.status
+    )
+
+@router.put("/collaborators/{user_id}", response_model=UserSummary)
+def update_collaborator(
+    user_id: int,
+    data: UserUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["ADMIN", "SUPERVISOR"]))
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Colaborador não encontrado.")
+
+    if data.name:
+        user.name = data.name.strip()
+    if data.matricula:
+        user.matricula = data.matricula.strip()
+    if data.cpf:
+        c_cpf = clean_cpf(data.cpf)
+        if c_cpf:
+            user.cpf = c_cpf
+    if data.role:
+        user.role = data.role.upper()
+    if data.password:
+        user.password_hash = hash_password(data.password)
+    if data.status:
+        user.status = data.status
+
+    db.commit()
+    db.refresh(user)
+
+    return UserSummary(
+        id=user.id,
+        matricula=user.matricula or "-",
+        name=user.name,
+        role=user.role,
+        masked_cpf=mask_cpf(user.cpf),
+        status=user.status
+    )
+
+@router.delete("/collaborators/{user_id}")
+def delete_collaborator(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(["ADMIN", "SUPERVISOR"]))
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Colaborador não encontrado.")
+
+    user.status = "Inativo"
+    db.commit()
+    return {"success": True, "message": f"Colaborador {user.name} desativado com sucesso."}
+
