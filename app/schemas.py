@@ -209,6 +209,28 @@ class ImportHistoryItem(BaseModel):
     imported_by_name: str
     created_at: str
 
+class ActionPlanCreateRequest(BaseModel):
+    user_id: int
+    competencia: str
+    issue_description: str
+    action_title: str
+    corrective_measure: str
+    deadline: str
+
+class ActionPlanItem(BaseModel):
+    id: int
+    user_id: int
+    collaborator_name: str
+    role: str
+    competencia: str
+    issue_description: str
+    action_title: str
+    corrective_measure: str
+    deadline: str
+    responsible_name: str
+    status: str
+    created_at: str
+
 class UserSummary(BaseModel):
     id: int
     matricula: str
